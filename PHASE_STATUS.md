@@ -2,7 +2,7 @@
 
 **Project:** Lunar Boulder Hazard — LROC NAC → detections → metric hazard map → Leaflet / upload / 3D viewers  
 **Status:** End-to-end demo working on real Apollo 17 NAC imagery, including a trained landing-safety classifier for image uploads and a Three.js 3D site model. YOLOv8n training is blocked by a host security policy; the map detector falls back to labelled classical CV and is reported honestly.  
-**Last verified:** 2026-11-13
+**Last verified:** 2026-11-23 (server/pages smoke test; full browser pass 2026-11-13)
 
 ---
 
@@ -14,7 +14,7 @@
 | 1. Synthetic training data | `scripts/synthetic_data.py` | Done | 500 tiles, 7,495 boulder boxes, YOLO + COCO labels |
 | 2. Real NAC fetch + tiling | `scripts/01_fetch_and_tile.py` | Done | 36 × 512 px tiles, 2,752 px mosaic, `tiles_metadata.json` |
 | 3. YOLOv8n training | `scripts/02_train.py` | **Blocked on this machine** | Training path implemented; checkpoint not produced |
-| 4. Detection + sizing + hazard | `scripts/03_infer_and_hazard.py` | Done (classical fallback) | 777 boulders, both profile grids, viewer JSON/PNG/TIF |
+| 4. Detection + sizing + hazard | `scripts/03_infer_and_hazard.py` | Done (classical fallback) | 465 boulders, both profile grids, viewer JSON/PNG/TIF |
 | 5. Landing-safety classifier | `scripts/04_train_safety_model.py` | Done, trained + evaluated | `landing_safety.joblib`, `safety_report.json` |
 | 6. Upload API + page | `scripts/serve_demo.py`, `viewer/upload.html` | Done, browser-verified | `/api/predict`, SAFE/CAUTION/UNSAFE verdict, 50 m grid |
 | 7. Leaflet viewer | `viewer/index.html` | Done, browser-verified | Interactive map, live hazard recompute, popups, URL state |
@@ -35,17 +35,17 @@
 
 ## Detection and hazard results (classical fallback)
 
-- **Detector:** OpenCV top-hat bright-body + cast-shadow test; NMS; labelled `classical` everywhere.
-- **Boulders:** 777 unique detections.
-- **Diameter:** 2.0–6.0 m (median 2.5 m), estimated as longest box side × 0.5 m/px.
-- **Confidence:** 0.275–0.88.
+- **Detector:** shared 3-scale DoG (bright body + shadow fill), NMS 0.3, per-area box budget; labelled `classical` everywhere.
+- **Boulders:** 465 unique detections.
+- **Diameter:** 2.5–14.5 m (median 5.0 m), estimated as longest box side × 0.5 m/px.
+- **Confidence:** 0.756–0.95 (smooth saturating contrast map, no saturated pile-up).
 - **Hazard grid:** 28 × 28 = 784 cells at 50 m × 50 m.
-- **Lander profile:** 342 safe · 182 caution · 260 unsafe.
-- **Rover profile:** 342 safe · 0 caution · 442 unsafe.
-- **Cells with detections:** 442.
+- **Lander profile:** 464 safe · 2 caution · 318 unsafe.
+- **Rover profile:** 464 safe · 0 caution · 320 unsafe.
+- **Cells with detections:** 320.
 - **Client/server parity:** the viewer recomputes the same grid in the browser and matches the exported Python stats exactly at the exported confidence (0.25).
 
-The rover profile has no caution cells because its 1.5 m unsafe threshold is below every detected boulder (minimum 2.0 m); size therefore dominates the zone.
+The rover profile has no caution cells because its 1.5 m unsafe threshold is below every detected boulder (minimum 2.5 m); size therefore dominates the zone.
 
 ---
 
@@ -95,16 +95,17 @@ Verified end-to-end with a real synthetic tile through the running server:
 - Drag/drop target accepts a PNG; clicking **Analyze** calls the API and returns a verdict card, 5×5 50 m grid, stats, target cell and detection list.
 - A mostly-safe tile returns **SAFE TO LAND** with a highlighted 50 m target and 4-cell safe component.
 - A dense single-cell crop returns **UNSAFE** (red verdict card).
-- Detections shown on the image now use the same top-hat + cast-shadow method as the main pipeline, so sizes are plausible (no 30+ m terrain false positives).
+- Detections shown on the image now use the same shared multi-scale DoG detector as the main pipeline, so sizes are plausible (no 30+ m terrain false positives).
 - Clear resets the panel; no page/console errors.
 
 ### 3D site model (`3d.html`)
 
 Verified with headless Chrome (WebGL via SwiftShader) and a headed-Chrome GLB export:
 
-- Loads the real NAC texture, 784 hazard columns, 777 boulders and the lander target.
-- Zone counts match the 2D export: lander 342/182/260; rover 342/0/442.
-- Confidence 0.25 → 777 active boulders; 0.70 → 676, with matching stats.
+- Loads the real NAC texture, 784 hazard columns, 465 boulders and the lander target.
+- Zone counts match the 2D export: lander 464/2/318; rover 464/0/320.
+- Confidence 0.25 → 465 active boulders; 0.90 → 56, with matching stats.
+- Boulder size exaggeration slider (1–10×, default 3×) keeps small rocks visible.
 - Vertical-exaggeration slider scales column heights (capped at 40 m); toggles hide/show columns and boulders.
 - Top view, reset view and “Landing target” focus all move the camera; the focus camera chooses the clearest diagonal so hazard walls do not hide the lander.
 - Hovering a boulder shows diameter, confidence and tile in a tooltip.

@@ -14,3 +14,9 @@ viewer/data/*.tif
 *.log
 data/labels/_*
 runs/
+
+# Local test artifacts and OS junk
+viewer/_test_upload.png
+.DS_Store
+Thumbs.db
+*.tmp

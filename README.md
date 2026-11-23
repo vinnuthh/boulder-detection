@@ -32,7 +32,7 @@ LROC NAC orthomosaic        512 px tiles              boulder boxes
 
 ![Lunar Boulder Hazard viewer](docs/viewer.png)
 
-*Apollo 17 LROC NAC basemap, 777 boulder detections, and the lander hazard grid
+*Apollo 17 LROC NAC basemap, 465 boulder detections, and the lander hazard grid
 in the static Leaflet viewer.*
 
 ## Quick start (Windows PowerShell)
@@ -178,7 +178,7 @@ Apollo 17 site:
 - Real NAC mosaic as the ground plane.
 - 784 translucent hazard columns whose height follows zone severity; vertical
   exaggeration is adjustable up to 3× (capped at 40 m so the lander stays visible).
-- 777 boulders as instanced-style polyhedra scaled by measured diameter; hovering
+- 465 boulders as instanced-style polyhedra scaled by measured diameter; hovering
   shows diameter, confidence and tile.
 - A lunar module at the largest connected safe cell, with a pulsing target ring
   and beacon.

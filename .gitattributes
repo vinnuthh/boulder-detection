@@ -1,0 +1,13 @@
+# Normalise text line endings; keep generated artefacts byte-for-byte.
+* text=auto
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.joblib binary
+*.pptx binary
+*.pdf binary
+*.tif binary
+*.tiff binary
