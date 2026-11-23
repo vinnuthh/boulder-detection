@@ -1,0 +1,90 @@
+# ============================================================================
+# Lunar Boulder Hazard — tunable pipeline configuration
+# Everything the demo needs to change lives here (or thresholds.yaml).
+# ============================================================================
+
+project:
+  name: "lunar-boulder-hazard"
+  seed: 42
+  # Demo site: Apollo 17, Taurus-Littrow (the LROC NAC orthomosaic target).
+  # Used for the local tangent plane and the procedural fallback terrain.
+  site:
+    name: "Apollo 17 — Taurus-Littrow (LROC NAC)"
+    center_lat: 20.1709
+    center_lon: 30.6683
+
+tiling:
+  tile_size: 512
+  overlap: 64
+  target_gsd: 0.5          # m/px, LROC NAC full resolution
+  # Number of 512x512 chips to keep. Enough for a visible mosaic, small repo.
+  max_tiles: 36
+  # Real LROC NAC-derived GeoTIFF source. This Apollo 17 orthomosaic is a
+  # controlled 0.5 m/px mosaic built from LROC NAC stereo pairs; it supports
+  # HTTP range reads so we only pull the ~30 MB window we need.
+  # Product: Moon Apollo 17 LROC NAC Landing Site Orthomosaic 50cm (USGS/NASA).
+  nac_urls:
+    - "https://asc-astropedia.s3.us-west-2.amazonaws.com/Moon/Apollo/Traverse/Apollo17/ancillary/APOLLO17_ORTHOMOSAIC_50CM.TIFF"
+  download_timeout_s: 60
+  # Files larger than this are window-read remotely instead of downloaded.
+  max_download_mb: 120
+  # If remote window reads are unsupported, optionally download anyway.
+  allow_full_download_for_remote: true
+  allow_synthetic_fallback: true
+
+model:
+  name: "yolov8n"          # 3.2M params, fits 6GB VRAM
+  epochs: 30
+  batch_size: 16           # RTX 4050 6GB sweet spot
+  imgsz: 512
+  lr0: 0.01
+  device: 0                # GPU 0
+  half_precision: true     # FP16 inference
+  workers: 2
+  patience: 12
+  # Hard cap on synthetic images actually used for training. The generator
+  # still writes `synthetic.num_images`; this keeps a demo run snappy.
+  max_train_images: 500
+  conf: 0.25
+  iou: 0.5
+
+synthetic:
+  num_images: 500
+  boulders_per_image: {min: 5, max: 25}
+  boulder_size_px: {min: 3, max: 40}  # at 0.5 m/px => 1.5 m .. 20 m
+  image_size: 512
+  # Fraction of the generated set used for validation.
+  val_split: 0.15
+  # Add tiny craters, background rocks and sensor noise so the model does not
+  # learn "bright blob = boulder" too literally.
+  background_rocks: {min: 4, max: 18}
+  craters_per_image: {min: 0, max: 3}
+
+inference:
+  conf: 0.25
+  iou: 0.5
+  max_det: 300
+  # When running on CPU / without a trained checkpoint, fall back to a
+  # classical shape detector so the demo never ends with zero detections.
+  allow_classical_fallback: true
+  # Real tiles are kept as an unseen domain test set, not training labels
+  # (01 produces no manual boulder labels for them).
+  real_tile_train_fraction: 0.0
+
+hazard:
+  grid_cell_size_m: 50     # 50m x 50m hazard cells
+  # Profiles are read from thresholds.yaml; both are exported in one run.
+  profiles: ["lander", "rover"]
+  # Which profile's grid is also written as hazard.tif (viewer computes live).
+  default_profile: "lander"
+  # Detections below this confidence are excluded from the exported hazard
+  # raster and stats. The viewer recomputes locally for the live slider.
+  min_confidence: 0.25
+
+viewer:
+  title: "Lunar Boulder Hazard"
+  # The viewer is fully local: it uses the exported NAC mosaic, a metric
+  # L.CRS.Simple frame, and needs no tile server or API key.
+  default_conf: 0.25
+  default_opacity: 0.55
+  default_profile: "lander"

@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lunar Boulder Hazard — LROC NAC</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230b1220'/%3E%3Ccircle cx='27' cy='26' r='16' fill='%23dbe7f7'/%3E%3Ccircle cx='38' cy='36' r='13' fill='%237dd3fc' opacity='.55'/%3E%3Ccircle cx='40' cy='24' r='4' fill='%2364748b'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<style>
+  :root{
+    --bg:#05070d;
+    --panel:rgba(12,18,30,.88);
+    --panel-solid:#0b1220;
+    --line:rgba(148,163,184,.16);
+    --line-strong:rgba(148,163,184,.28);
+    --text:#e8eef9;
+    --muted:#8c9bb2;
+    --faint:#5d6b80;
+    --safe:#00ff66;
+    --caution:#ffa500;
+    --unsafe:#ff2d2d;
+    --accent:#7dd3fc;
+    --accent-2:#c084fc;
+    --radius:14px;
+    --shadow:0 18px 50px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Segoe UI","Inter",system-ui,-apple-system,sans-serif;
+    font-size:14px;
+    overflow:hidden;
+  }
+  button,input{font:inherit}
+  button{color:inherit}
+  #app{display:flex;height:100vh;width:100vw}
+
+  /* ---------------------------------------------------------------- sidebar */
+  #sidebar{
+    z-index:1100;
+    width:372px;
+    flex:0 0 372px;
+    height:100%;
+    overflow-y:auto;
+    padding:20px 18px 18px;
+    background:
+      linear-gradient(180deg,rgba(13,20,34,.97),rgba(7,11,19,.97));
+    border-right:1px solid var(--line);
+    box-shadow:16px 0 50px rgba(0,0,0,.35);
+    scrollbar-width:thin;
+    scrollbar-color:rgba(148,163,184,.3) transparent;
+  }
+  #sidebar::-webkit-scrollbar{width:8px}
+  #sidebar::-webkit-scrollbar-thumb{background:rgba(148,163,184,.22);border-radius:8px}
+
+  .brand{display:flex;align-items:center;gap:13px;margin-bottom:18px}
+  .logo{
+    width:46px;height:46px;border-radius:14px;flex:0 0 46px;
+    display:grid;place-items:center;font-size:25px;
+    background:
+      radial-gradient(circle at 35% 28%,#f8fafc 0 18%,#cbd5e1 19% 34%,#64748b 35% 60%,#0f172a 61%);
+    box-shadow:0 0 0 1px rgba(255,255,255,.12),0 10px 26px rgba(125,211,252,.14);
+    color:transparent;position:relative;overflow:hidden;
+  }
+  .logo::after{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(circle at 70% 75%,transparent 0 25%,rgba(5,10,20,.55) 26% 100%);
+  }
+  .brand h1{font-size:17px;line-height:1.15;margin:0;letter-spacing:.2px}
+  .brand p{margin:4px 0 0;font-size:11px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase}
+
+  .site-card{
+    position:relative;overflow:hidden;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 14px 12px;
+    background:
+      radial-gradient(120% 130% at 100% 0%,rgba(125,211,252,.13),transparent 55%),
+      rgba(15,23,39,.65);
+    margin-bottom:14px;
+  }
+  .site-card::after{
+    content:"";position:absolute;right:-26px;top:-42px;width:120px;height:120px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.18),rgba(120,130,150,.08) 45%,transparent 70%);
+    pointer-events:none;
+  }
+  .site-kicker{font-size:10px;letter-spacing:1.4px;color:var(--accent);text-transform:uppercase;font-weight:700}
+  .site-name{font-size:15px;font-weight:650;margin:5px 0 5px;line-height:1.25}
+  .site-coords{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+  .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+  .badge{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:4px 8px;border-radius:999px;font-size:10.5px;font-weight:650;letter-spacing:.2px;
+    border:1px solid var(--line);background:rgba(255,255,255,.035);color:#c8d4e6;
+  }
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:var(--safe);box-shadow:0 0 8px var(--safe)}
+  .badge.model{border-color:rgba(125,211,252,.28);color:#bfeaff;background:rgba(125,211,252,.07)}
+  .badge.warn{border-color:rgba(255,165,0,.3);color:#ffd08a;background:rgba(255,165,0,.07)}
+
+  .panel{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:13px 14px;
+    margin-bottom:12px;
+    background:rgba(10,16,28,.6);
+  }
+  .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .section-head span:first-child{font-size:10.5px;font-weight:750;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase}
+  .section-head output,.section-head .value{font-size:12px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+  .hint{margin:8px 0 0;font-size:11.5px;line-height:1.45;color:var(--muted)}
+
+  .segmented{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:rgba(0,0,0,.34);padding:4px;border-radius:11px;border:1px solid var(--line)}
+  .segmented button{
+    border:0;background:transparent;border-radius:8px;padding:8px 6px;cursor:pointer;
+    font-size:12px;font-weight:650;color:var(--muted);transition:.18s;letter-spacing:.2px;
+  }
+  .segmented button:hover{color:var(--text);background:rgba(255,255,255,.04)}
+  .segmented button.active{
+    color:#06111e;
+    background:linear-gradient(135deg,#8ae7ff,#59c8ff);
+    box-shadow:0 6px 18px rgba(89,200,255,.24);
+  }
+
+  .thresholds{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+  .thresholds div{border:1px solid rgba(148,163,184,.1);border-radius:9px;padding:7px 8px;background:rgba(255,255,255,.018)}
+  .thresholds span{display:block;color:var(--faint);font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px}
+  .thresholds b{font-size:11.5px;font-weight:650;color:#cfd9e8;font-variant-numeric:tabular-nums}
+
+  .slider-wrap{position:relative}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;cursor:pointer;display:block;margin:0;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:5px;border-radius:999px;
+    background:linear-gradient(90deg,rgba(125,211,252,.55),rgba(255,209,102,.55),rgba(255,77,109,.7));
+    border:1px solid rgba(255,255,255,.08);
+  }
+  input[type=range]::-moz-range-track{
+    height:5px;border-radius:999px;
+    background:linear-gradient(90deg,rgba(125,211,252,.55),rgba(255,209,102,.55),rgba(255,77,109,.7));
+    border:1px solid rgba(255,255,255,.08);
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:17px;height:17px;border-radius:50%;margin-top:-7px;
+    background:#eaf6ff;border:2px solid #49bff4;box-shadow:0 0 0 4px rgba(73,191,244,.14),0 2px 6px rgba(0,0,0,.45);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:15px;height:15px;border-radius:50%;background:#eaf6ff;border:2px solid #49bff4;
+    box-shadow:0 0 0 4px rgba(73,191,244,.14),0 2px 6px rgba(0,0,0,.45);
+  }
+  .range-labels{display:flex;justify-content:space-between;color:var(--faint);font-size:10px;font-variant-numeric:tabular-nums;margin-top:1px}
+  .opacity-track::-webkit-slider-runnable-track{background:linear-gradient(90deg,rgba(255,255,255,.08),rgba(255,255,255,.62))}
+  .opacity-track::-moz-range-track{background:linear-gradient(90deg,rgba(255,255,255,.08),rgba(255,255,255,.62))}
+
+  .stack-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.05)}
+  .stack-bar span{display:block;height:100%;transition:width .25s ease}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+  .stat{border:1px solid var(--line);border-radius:10px;padding:8px 7px;background:rgba(255,255,255,.018)}
+  .stat .n{display:block;font-size:19px;font-weight:750;line-height:1;font-variant-numeric:tabular-nums}
+  .stat .l{display:block;font-size:9px;letter-spacing:.9px;color:var(--muted);text-transform:uppercase;margin-top:4px}
+  .stat.safe .n{color:var(--safe)}
+  .stat.caution .n{color:var(--caution)}
+  .stat.unsafe .n{color:var(--unsafe)}
+  .rows{margin-top:10px;border-top:1px solid rgba(148,163,184,.1)}
+  .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0 0;color:var(--muted);font-size:11.5px}
+  .row b{color:var(--text);font-size:12.5px;font-variant-numeric:tabular-nums}
+  .row .sub{color:var(--faint);font-size:10px;font-weight:400}
+
+  .legend-list{display:flex;flex-direction:column;gap:7px;margin-top:2px}
+  .legend-item{display:flex;align-items:center;gap:9px;color:#b9c6d8;font-size:11.5px}
+  .swatch{width:11px;height:11px;border-radius:3px;flex:0 0 11px;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+  .legend-note{margin-top:10px;padding-top:9px;border-top:1px solid rgba(148,163,184,.1);font-size:10.5px;color:var(--faint);line-height:1.5}
+  .conf-ramp{height:7px;border-radius:999px;background:linear-gradient(90deg,#60d6ff,#ffd166 42%,#ff9f1c 68%,#ff4d6d);margin:7px 0 4px}
+  .conf-labels{display:flex;justify-content:space-between;font-size:9.5px;color:var(--faint);letter-spacing:.3px}
+
+  .sidebar-foot{display:flex;gap:8px;margin-top:4px}
+  .ghost-btn{
+    flex:1;border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:10px;
+    padding:9px 8px;font-size:11.5px;font-weight:600;color:#c7d4e6;cursor:pointer;transition:.16s;
+  }
+  .ghost-btn:hover{background:rgba(255,255,255,.075);border-color:var(--line-strong)}
+  .ghost-btn.active{border-color:rgba(255,165,0,.38);background:rgba(255,165,0,.1);color:#ffd08a}
+  .credit{margin-top:14px;font-size:9.5px;line-height:1.55;color:#4d5a6d}
+  .credit a{color:#7f93ad;text-decoration:none}
+  .credit a:hover{text-decoration:underline}
+
+  /* ------------------------------------------------------------------- map */
+  #map-wrap{position:relative;flex:1 1 auto;min-width:0;background:
+    radial-gradient(1200px 800px at 60% 35%,#111a2c 0%,#070b13 55%,#04060b 100%);
+  }
+  #map{position:absolute;inset:0;background:transparent;outline:none}
+  #map-wrap::before{
+    content:"";position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.7;
+    background-image:
+      radial-gradient(1px 1px at 12% 18%,rgba(255,255,255,.6),transparent 60%),
+      radial-gradient(1px 1px at 28% 72%,rgba(255,255,255,.4),transparent 60%),
+      radial-gradient(1.5px 1.5px at 72% 28%,rgba(255,255,255,.55),transparent 60%),
+      radial-gradient(1px 1px at 84% 62%,rgba(255,255,255,.35),transparent 60%),
+      radial-gradient(1px 1px at 48% 42%,rgba(255,255,255,.28),transparent 60%),
+      radial-gradient(1px 1px at 62% 88%,rgba(255,255,255,.35),transparent 60%),
+      radial-gradient(1px 1px at 92% 14%,rgba(255,255,255,.28),transparent 60%),
+      radial-gradient(1px 1px at 8% 92%,rgba(255,255,255,.25),transparent 60%);
+  }
+  .leaflet-container{background:transparent;font-family:inherit}
+  .leaflet-image-layer.lunar-basemap{image-rendering:auto}
+  .leaflet-image-layer.hazard-overlay{image-rendering:pixelated;cursor:crosshair}
+  .leaflet-control-zoom{border:1px solid var(--line)!important;border-radius:10px!important;overflow:hidden;box-shadow:var(--shadow)}
+  .leaflet-control-zoom a{
+    background:rgba(11,18,30,.92)!important;color:#dbe7f7!important;border-bottom:1px solid var(--line)!important;
+    width:32px!important;height:32px!important;line-height:32px!important;font-size:17px!important;
+  }
+  .leaflet-control-zoom a:hover{background:rgba(30,45,66,.95)!important}
+
+  .topbar{
+    position:absolute;top:16px;right:16px;z-index:1000;display:flex;align-items:center;gap:8px;
+  }
+  .pill{
+    border:1px solid var(--line);background:rgba(10,17,29,.82);backdrop-filter:blur(12px);
+    border-radius:999px;padding:8px 12px;font-size:11.5px;font-weight:650;color:#cbd8ea;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;transition:.16s;box-shadow:0 8px 26px rgba(0,0,0,.28);
+    text-decoration:none;
+  }
+  .pill:hover{border-color:var(--line-strong);background:rgba(22,34,52,.9);color:#fff}
+  .pill.active{border-color:rgba(255,165,0,.42);background:rgba(255,165,0,.12);color:#ffd08a;box-shadow:0 0 22px rgba(255,165,0,.08)}
+  .pill .live{width:6px;height:6px;border-radius:50%;background:var(--safe);box-shadow:0 0 8px var(--safe);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+  .map-meta{
+    position:absolute;left:18px;top:18px;z-index:900;display:flex;flex-direction:column;gap:5px;pointer-events:none;
+    padding:9px 13px 10px;border-radius:11px;
+    background:linear-gradient(120deg,rgba(6,11,20,.9),rgba(6,11,20,.58));
+    border:1px solid rgba(148,163,184,.14);
+    box-shadow:0 10px 30px rgba(0,0,0,.3);
+    backdrop-filter:blur(9px);
+  }
+  .map-title{
+    font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:#b7c5d8;font-weight:700;
+    text-shadow:0 2px 10px rgba(0,0,0,.7);
+  }
+  .map-sub{font-size:10px;color:#8ea0b8;font-variant-numeric:tabular-nums;text-shadow:0 2px 8px rgba(0,0,0,.7)}
+
+  #scalebar{
+    position:absolute;left:22px;bottom:22px;z-index:900;display:flex;align-items:flex-end;gap:8px;
+    color:#c3d0e1;pointer-events:none;
+  }
+  #scalebar-line{
+    display:block;height:7px;border-left:1px solid currentColor;border-right:1px solid currentColor;
+    border-bottom:1px solid currentColor;width:90px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.8));
+  }
+  #scalebar-label{font-size:10.5px;font-variant-numeric:tabular-nums;letter-spacing:.4px;text-shadow:0 1px 4px #000}
+
+  .map-credit{
+    position:absolute;right:16px;bottom:14px;z-index:900;font-size:9.5px;color:#65748a;
+    text-align:right;line-height:1.45;pointer-events:none;text-shadow:0 1px 4px #000;
+  }
+  .map-credit b{color:#93a5bb;font-weight:600}
+
+  #loading{
+    position:absolute;inset:0;z-index:1500;display:grid;place-items:center;
+    background:rgba(4,7,13,.78);backdrop-filter:blur(4px);transition:opacity .35s ease;
+  }
+  #loading.hidden{opacity:0;pointer-events:none}
+  .loader-card{text-align:center;max-width:360px;padding:24px}
+  .spinner{
+    width:46px;height:46px;border-radius:50%;margin:0 auto 16px;
+    border:2px solid rgba(148,163,184,.18);border-top-color:#7dd3fc;border-right-color:#c084fc;
+    animation:spin 1s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loader-card h3{margin:0 0 6px;font-size:15px;letter-spacing:.2px}
+  .loader-card p{margin:0;color:var(--muted);font-size:11.5px;line-height:1.5}
+  #error{position:absolute;inset:0;z-index:1600;display:grid;place-items:center;background:rgba(5,8,14,.94);padding:24px}
+  #error[hidden]{display:none}
+  .error-card{max-width:480px;border:1px solid rgba(255,77,109,.3);background:rgba(28,10,18,.75);border-radius:16px;padding:22px}
+  .error-card h3{margin:0 0 8px;color:#ffb3c3;font-size:16px}
+  .error-card p{color:#d4b5c0;font-size:12px;line-height:1.55;margin:0 0 10px}
+  .error-card code{display:block;white-space:pre-wrap;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);padding:10px;border-radius:8px;color:#ffd9e3;font-size:11px;margin:8px 0}
+
+  #empty-note{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:850;
+    border:1px solid var(--line);background:rgba(10,17,29,.88);backdrop-filter:blur(10px);
+    border-radius:14px;padding:15px 18px;text-align:center;pointer-events:none;box-shadow:var(--shadow);
+  }
+  #empty-note[hidden]{display:none}
+  #empty-note b{display:block;font-size:13px;margin-bottom:3px}
+  #empty-note span{font-size:11px;color:var(--muted)}
+
+  #toast{
+    position:absolute;left:50%;bottom:24px;transform:translate(-50%,20px);z-index:1400;
+    background:rgba(10,17,29,.92);border:1px solid var(--line);border-radius:11px;padding:9px 14px;
+    font-size:11.5px;color:#cdd9e9;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.28s ease;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+
+  /* --------------------------------------------------------------- popups */
+  .leaflet-popup-content-wrapper{
+    background:rgba(9,15,26,.98);color:var(--text);border:1px solid var(--line-strong);
+    border-radius:13px;box-shadow:0 22px 60px rgba(0,0,0,.6);padding:0;overflow:hidden;
+  }
+  .leaflet-popup-content{margin:0;line-height:1.4;min-width:240px}
+  .leaflet-popup-tip{background:rgba(9,15,26,.98);border:1px solid var(--line-strong)}
+  .leaflet-popup-close-button{color:#8fa1b8!important;font-size:18px!important;padding:6px 8px 0 0!important}
+  .leaflet-popup-close-button:hover{color:#fff!important}
+  .popup-card{padding:15px 16px 13px}
+  .popup-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+  .popup-kicker{font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--faint);font-weight:700}
+  .zone-pill{
+    font-size:9px;letter-spacing:.8px;text-transform:uppercase;font-weight:800;border-radius:999px;
+    padding:4px 8px;border:1px solid currentColor;
+  }
+  .zone-pill.zone-0{color:var(--safe);background:rgba(0,255,102,.08)}
+  .zone-pill.zone-1{color:var(--caution);background:rgba(255,165,0,.09)}
+  .zone-pill.zone-2{color:var(--unsafe);background:rgba(255,45,45,.1)}
+  .zone-pill.zone-out{color:#94a3b8;background:rgba(148,163,184,.08)}
+  .popup-diameter{font-size:31px;font-weight:750;letter-spacing:-.6px;line-height:1;font-variant-numeric:tabular-nums}
+  .popup-diameter span{font-size:14px;font-weight:600;color:var(--muted);margin-left:2px}
+  .popup-kicker + .zone-pill{margin-left:auto}
+  .conf-row{display:flex;justify-content:space-between;margin-top:13px;font-size:10.5px;color:var(--muted);letter-spacing:.3px;text-transform:uppercase}
+  .conf-row b{color:var(--text);font-size:12px;font-variant-numeric:tabular-nums;text-transform:none}
+  .conf-track{height:5px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:5px}
+  .conf-track i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#60d6ff,#ffd166,#ff4d6d)}
+  .popup-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin:12px 0 0;padding:10px 0;border-top:1px solid rgba(148,163,184,.12);border-bottom:1px solid rgba(148,163,184,.12)}
+  .popup-grid div{min-width:0}
+  .popup-grid dt{font-size:9px;letter-spacing:.8px;text-transform:uppercase;color:var(--faint);margin-bottom:2px}
+  .popup-grid dd{margin:0;font-size:11.5px;color:#cfdbea;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .popup-note{font-size:9.5px;line-height:1.45;color:#5f6f84;margin-top:9px}
+  .popup-foot{display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-size:9.5px;color:#61748c;font-variant-numeric:tabular-nums}
+  .popup-foot span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cell-popup .popup-diameter{font-size:25px}
+  .cell-popup .popup-grid{grid-template-columns:1fr 1fr}
+  .popup-zone-note{font-size:10.5px;color:#8293a9;margin-top:9px;line-height:1.45}
+
+  .leaflet-tooltip.boulder-tip{
+    background:rgba(7,12,21,.94);border:1px solid var(--line-strong);color:#d9e5f4;
+    border-radius:8px;padding:6px 8px;font-size:10.5px;box-shadow:0 10px 28px rgba(0,0,0,.45);
+    font-variant-numeric:tabular-nums;
+  }
+  .leaflet-tooltip-top.boulder-tip::before{border-top-color:rgba(7,12,21,.94)}
+
+  /* ---------------------------------------------------------------- modal */
+  #about-modal{
+    position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:24px;
+    background:rgba(2,5,10,.72);backdrop-filter:blur(6px);
+  }
+  #about-modal[hidden]{display:none}
+  .modal-card{
+    width:min(620px,94vw);max-height:86vh;overflow-y:auto;border:1px solid var(--line-strong);
+    border-radius:18px;background:linear-gradient(180deg,#0d1626,#080d17);box-shadow:0 30px 90px rgba(0,0,0,.7);
+    padding:24px 26px;
+  }
+  .modal-card h2{margin:0 0 4px;font-size:20px;letter-spacing:-.2px}
+  .modal-card .sub{color:var(--muted);font-size:11.5px;margin:0 0 18px}
+  .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+  .modal-grid div{border:1px solid var(--line);border-radius:10px;padding:10px;background:rgba(255,255,255,.02)}
+  .modal-grid h4{margin:0 0 4px;font-size:10px;letter-spacing:.9px;text-transform:uppercase;color:var(--accent)}
+  .modal-grid p{margin:0;font-size:11px;line-height:1.45;color:#a7b6ca}
+  .modal-card p{font-size:12px;line-height:1.6;color:#aab8cb}
+  .modal-card a{color:#8fdcff}
+  .modal-card code{background:rgba(255,255,255,.06);padding:2px 5px;border-radius:5px;font-size:11px;color:#d7e7f8}
+  .modal-close{
+    margin-top:16px;border:1px solid var(--line);background:rgba(255,255,255,.05);border-radius:10px;
+    padding:9px 16px;font-size:12px;font-weight:650;cursor:pointer;color:#dce7f5;
+  }
+  .modal-close:hover{background:rgba(255,255,255,.1)}
+
+  @media (max-width:980px){
+    #app{flex-direction:column}
+    #sidebar{order:2;width:100%;flex:0 0 44vh;height:44vh;border-right:0;border-top:1px solid var(--line);padding:16px}
+    #map-wrap{order:1;flex:1 1 56vh;min-height:56vh}
+    .brand{margin-bottom:12px}
+    .site-card{margin-bottom:10px}
+    .panel{padding:11px 12px;margin-bottom:10px}
+    .topbar{top:12px;right:12px}
+    .map-meta{left:12px;top:12px}
+    #scalebar{left:14px;bottom:14px}
+    .map-credit{right:12px;bottom:10px}
+  }
+  @media (max-width:560px){
+    .topbar .pill span.label{display:none}
+    .modal-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">☾</div>
+      <div>
+        <h1>Lunar Boulder Hazard</h1>
+        <p>LROC NAC · 0.5 m/px</p>
+      </div>
+    </div>
+
+    <div class="site-card">
+      <div class="site-kicker" id="source-type">Live hazard assessment</div>
+      <div class="site-name" id="site-name">Loading site…</div>
+      <div class="site-coords" id="site-coords">—</div>
+      <div class="badges">
+        <span class="badge"><i class="dot"></i><span id="gsd-badge">0.50 m/px</span></span>
+        <span class="badge model" id="model-badge">Model loading</span>
+        <span class="badge" id="product-badge">LROC NAC</span>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="section-head"><span>Hazard profile</span><span class="value" id="profile-label">Lander</span></div>
+      <div class="segmented" id="profile-toggle" role="group" aria-label="Hazard profile">
+        <button type="button" data-profile="lander" class="active">🛬 Lander</button>
+        <button type="button" data-profile="rover">🛻 Rover</button>
+      </div>
+      <p class="hint" id="profile-desc">Conservative thresholds for a lander footprint.</p>
+      <div class="thresholds">
+        <div><span>Unsafe boulder</span><b id="th-size-unsafe">≥ 3.0 m</b></div>
+        <div><span>Unsafe density</span><b id="th-density-unsafe">≥ 11 / cell</b></div>
+        <div><span>Caution boulder</span><b id="th-size-caution">1.0–3.0 m</b></div>
+        <div><span>Caution density</span><b id="th-density-caution">4–10 / cell</b></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head"><span>Detection confidence</span><output id="conf-val" for="conf">0.25</output></div>
+      <div class="slider-wrap">
+        <input id="conf" type="range" min="0.05" max="0.95" step="0.01" value="0.25" aria-label="Minimum detection confidence">
+      </div>
+      <div class="range-labels"><span>0.05 · permissive</span><span>0.95 · strict</span></div>
+      <p class="hint" id="conf-hint">Boulders below this confidence are hidden and excluded from the hazard grid.</p>
+    </section>
+
+    <section class="panel">
+      <div class="section-head"><span>Hazard opacity</span><output id="opacity-val" for="opacity">55%</output></div>
+      <div class="slider-wrap">
+        <input id="opacity" class="opacity-track" type="range" min="0" max="1" step="0.01" value="0.55" aria-label="Hazard overlay opacity">
+      </div>
+      <div class="range-labels"><span>0% · basemap</span><span>100% · zones</span></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head"><span>Zone coverage</span><span class="value" id="hazard-state">ON</span></div>
+      <div class="stack-bar" aria-hidden="true">
+        <span id="bar-safe" style="width:100%;background:var(--safe)"></span>
+        <span id="bar-caution" style="width:0%;background:var(--caution)"></span>
+        <span id="bar-unsafe" style="width:0%;background:var(--unsafe)"></span>
+      </div>
+      <div class="stat-grid">
+        <div class="stat safe"><span class="n" id="stat-safe">0</span><span class="l">Safe cells</span></div>
+        <div class="stat caution"><span class="n" id="stat-caution">0</span><span class="l">Caution</span></div>
+        <div class="stat unsafe"><span class="n" id="stat-unsafe">0</span><span class="l">Unsafe</span></div>
+      </div>
+      <div class="rows">
+        <div class="row"><span>Boulders visible <span class="sub" id="detections-total"></span></span><b id="boulder-count">0</b></div>
+        <div class="row"><span>Unsafe share</span><b id="unsafe-share">0.0%</b></div>
+        <div class="row"><span>Cells scanned</span><b id="cells-scanned">0</b></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head"><span>Legend</span><span class="value" id="cell-legend">50 m cells</span></div>
+      <div class="legend-list">
+        <div class="legend-item"><i class="swatch" style="background:var(--safe)"></i>Safe — clear for profile</div>
+        <div class="legend-item"><i class="swatch" style="background:var(--caution)"></i>Caution — reduce speed / survey</div>
+        <div class="legend-item"><i class="swatch" style="background:var(--unsafe)"></i>Unsafe — avoid / redesign</div>
+      </div>
+      <div class="legend-note">Marker color = detection confidence. Marker size scales with estimated boulder diameter. Click any cell or boulder for detail.</div>
+      <div class="conf-ramp" aria-hidden="true"></div>
+      <div class="conf-labels"><span>low confidence</span><span>high confidence</span></div>
+    </section>
+
+    <div class="sidebar-foot">
+      <button type="button" class="ghost-btn active" id="hazard-toggle">⚠️ Hazard map</button>
+      <button type="button" class="ghost-btn" id="reset-view">⤢ Reset view</button>
+    </div>
+
+    <div class="credit">
+      <b>Data:</b> NASA/GSFC/ASU LROC NAC · Apollo 17 orthomosaic 0.5 m/px, distributed by USGS Astrogeology. <a href="https://lroc.im-ldi.com/" target="_blank" rel="noopener">LROC</a> · <a href="https://astrogeology.usgs.gov/" target="_blank" rel="noopener">USGS</a><br>
+      Demo product — not flight-certified. Hazard logic is configurable in <a href="../thresholds.yaml" target="_blank" rel="noopener">thresholds.yaml</a>.
+    </div>
+  </aside>
+
+  <main id="map-wrap">
+    <div class="map-meta">
+      <div class="map-title">Boulder hazard map</div>
+      <div class="map-sub" id="map-sub">Local lunar tangent plane · metres</div>
+    </div>
+
+    <div class="topbar">
+      <button type="button" class="pill active" id="hazard-toggle-top"><span class="live"></span><span class="label">Hazard Map</span></button>
+      <a class="pill" href="3d.html">◈ <span class="label">3D Site</span></a>
+      <a class="pill" href="upload.html">⬆ <span class="label">Upload</span></a>
+      <button type="button" class="pill" id="about-btn">ℹ <span class="label">About</span></button>
+    </div>
+
+    <div id="scalebar"><span id="scalebar-line"></span><span id="scalebar-label">100 m</span></div>
+    <div class="map-credit"><b>LROC NAC</b> · NASA/GSFC/ASU<br>USGS Astrogeology · 0.5 m/px</div>
+
+    <div id="map"></div>
+    <div id="empty-note" hidden><b>No boulders above this confidence</b><span>Lower the confidence slider to bring detections back.</span></div>
+    <div id="toast"></div>
+
+    <div id="loading">
+      <div class="loader-card">
+        <div class="spinner"></div>
+        <h3>Loading lunar terrain</h3>
+        <p>Fetching NAC basemap, detections and hazard grid…</p>
+      </div>
+    </div>
+
+    <div id="error" hidden>
+      <div class="error-card">
+        <h3>Viewer data could not be loaded</h3>
+        <p>Static files must be served over HTTP (not opened as <code>file://</code>). From the project root:</p>
+        <code>cd viewer
+python -m http.server 8000</code>
+        <p>Then open <b>http://localhost:8000/</b>. If the pipeline has not run yet:</p>
+        <code>python scripts/synthetic_data.py
+python scripts/01_fetch_and_tile.py
+python scripts/03_infer_and_hazard.py</code>
+        <p id="error-detail" style="color:#8f6d79;font-family:monospace;font-size:10.5px"></p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="about-modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="about-title">
+    <h2 id="about-title">Lunar Boulder Hazard</h2>
+    <p class="sub">End-to-end demo: LROC NAC → YOLOv8n → GSD size estimate → 50 m hazard grid → static Leaflet viewer.</p>
+    <p>High-resolution lunar surface imagery is tiled into 512 px chips, run through the boulder detector, and each box is converted from pixels to metres using the GeoTIFF transform. Detections are binned into 50 m cells; each cell takes the worse of its <b>maximum boulder size</b> and <b>boulder density</b> class for the selected mission profile.</p>
+    <div class="modal-grid">
+      <div><h4>1 · Detect</h4><p>YOLOv8n fine-tuned on synthetic LROC-like tiles with realistic boulders, craters, shadows and sensor noise.</p></div>
+      <div><h4>2 · Measure</h4><p>Diameter = longest box side × GSD. GSD comes from the local tile GeoTIFF transform (<code>transform.a</code>).</p></div>
+      <div><h4>3 · Classify</h4><p>Size and density thresholds per profile, combined worst-case. Both lander and rover grids are exported in one run.</p></div>
+      <div><h4>4 · Explore</h4><p>Confidence slider filters markers and recomputes the hazard grid in the browser. Profile toggle swaps thresholds instantly.</p></div>
+    </div>
+    <p><b>Model status:</b> <span id="about-model">loading</span>. The viewer records the detector actually used in <code>hazard_meta.json</code>; if PyTorch is unavailable, the pipeline falls back to a classical bright-body + cast-shadow detector so the demo still runs.</p>
+    <p><b>URL parameters:</b> <code>?profile=rover&amp;conf=0.5&amp;opacity=0.7</code>. Share a link to reproduce a view.</p>
+    <p><b>Caveat:</b> boulder diameter is a 2-D bounding-box estimate; shadows and overlapping rocks can bias it. Hazard zones are decision support for a demo, not flight certification.</p>
+    <button type="button" class="modal-close" id="about-close">Close</button>
+  </div>
+</div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const fmt1 = (v) => Number(v).toFixed(1);
+  const fmt2 = (v) => Number(v).toFixed(2);
+  const ZONE_NAMES = ["SAFE", "CAUTION", "UNSAFE"];
+  const TRANSPARENT = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+  const state = {
+    meta: null,
+    geo: null,
+    profile: "lander",
+    conf: 0.25,
+    opacity: 0.55,
+    hazardOn: true,
+    map: null,
+    hazardLayer: null,
+    markerLayer: null,
+    basemapBounds: null,
+    hazardBounds: null,
+    lastGrid: null,
+    basemap: null,
+    checkedServer: false
+  };
+
+  let scheduled = null;
+
+  /* --------------------------------------------------------------- helpers */
+  function fetchJSON(url) {
+    return fetch(url, { cache: "no-store" }).then((r) => {
+      if (!r.ok) throw new Error(url + " → HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  function showError(err) {
+    $("loading").classList.add("hidden");
+    $("error").hidden = false;
+    $("error-detail").textContent = String(err && err.message ? err.message : err);
+    console.error(err);
+  }
+
+  function showToast(msg, ms) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => t.classList.remove("show"), ms || 3400);
+  }
+
+  function confColor(c) {
+    const stops = [
+      [0.00, [96, 214, 255]],
+      [0.35, [255, 209, 102]],
+      [0.65, [255, 159, 28]],
+      [1.00, [255, 77, 109]]
+    ];
+    c = clamp(c, 0, 1);
+    for (let i = 0; i < stops.length - 1; i++) {
+      const a = stops[i], b = stops[i + 1];
+      if (c >= a[0] && c <= b[0]) {
+        const t = (c - a[0]) / Math.max(1e-9, b[0] - a[0]);
+        const rgb = a[1].map((v, j) => Math.round(v + (b[1][j] - v) * t));
+        return "rgb(" + rgb.join(",") + ")";
+      }
+    }
+    return "rgb(255,77,109)";
+  }
+
+  function markerRadius(diameterM) {
+    return clamp(2.5 + 2.55 * Math.sqrt(Math.max(0, diameterM)), 3.2, 15);
+  }
+
+  function zoneClass(z) {
+    return z === 0 ? "zone-0" : z === 1 ? "zone-1" : z === 2 ? "zone-2" : "zone-out";
+  }
+  function zoneLabel(z) {
+    return z === 0 ? "SAFE" : z === 1 ? "CAUTION" : z === 2 ? "UNSAFE" : "OUTSIDE";
+  }
+
+  function cellIndexFor(x, y) {
+    const g = state.meta.grid;
+    const b = g.bounds_m;
+    const c = Math.floor((x - b[0]) / g.cell_size_m);
+    const r = Math.floor((b[3] - y) / g.cell_size_m);
+    if (c < 0 || c >= g.cols || r < 0 || r >= g.rows) return -1;
+    return r * g.cols + c;
+  }
+
+  /* ------------------------------------------------------------------- map */
+  function initMap() {
+    const b = state.meta.basemap.bounds_m;
+    const g = state.meta.grid.bounds_m;
+    state.basemapBounds = L.latLngBounds([[b[1], b[0]], [b[3], b[2]]]);
+    state.hazardBounds = L.latLngBounds([[g[1], g[0]], [g[3], g[2]]]);
+
+    state.map = L.map("map", {
+      crs: L.CRS.Simple,
+      // L.CRS.Simple scale is 2^zoom (not 256 * 2^zoom), so 0 => 1 px/m.
+      minZoom: -8,
+      maxZoom: 3,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
+      attributionControl: false,
+      zoomControl: false,
+      preferCanvas: true,
+      fadeAnimation: true
+    });
+
+    state.basemap = L.imageOverlay(state.meta.basemap.path, state.basemapBounds, {
+      className: "lunar-basemap",
+      interactive: false,
+      opacity: 1
+    }).addTo(state.map);
+
+    state.map.fitBounds(state.basemapBounds, { padding: [26, 26] });
+
+    const maxB = state.basemapBounds.pad(0.6).extend(state.hazardBounds.pad(0.6));
+    state.map.setMaxBounds(maxB);
+
+    L.control.zoom({ position: "bottomright" }).addTo(state.map);
+
+    // Non-interactive: the marker canvas sits above this overlay and would
+    // swallow clicks on empty cells. The map click handler below resolves the
+    // clicked cell from its LatLng; marker clicks do not bubble to the map.
+    state.hazardLayer = L.imageOverlay(TRANSPARENT, state.hazardBounds, {
+      className: "hazard-overlay",
+      interactive: false,
+      opacity: state.opacity,
+      bubblingMouseEvents: false
+    }).addTo(state.map);
+
+    state.markerLayer = L.layerGroup().addTo(state.map);
+
+    state.map.on("zoomend moveend", updateScaleBar);
+    state.map.on("click", onHazardClick);
+
+    if (state.basemap && state.basemap._image) {
+      state.basemap._image.addEventListener("error", () => {
+        showToast("Basemap image missing — run scripts/01_fetch_and_tile.py", 6000);
+      });
+    }
+  }
+
+  function updateScaleBar() {
+    if (!state.map) return;
+    const zoom = state.map.getZoom();
+    const pxPerM = Math.pow(2, zoom);
+    const raw = 120 / pxPerM;
+    const pow = Math.floor(Math.log10(Math.max(raw, 1e-6)));
+    const f = raw / Math.pow(10, pow);
+    const nice = (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * Math.pow(10, pow);
+    const px = clamp(nice * pxPerM, 18, 190);
+    $("scalebar-line").style.width = px + "px";
+    $("scalebar-label").textContent = nice >= 1000 ? (nice / 1000).toFixed(nice >= 10000 ? 0 : 1) + " km" : Math.round(nice) + " m";
+  }
+
+  /* -------------------------------------------------------------- hazard */
+  function recomputeHazard() {
+    const g = state.meta.grid;
+    const zones = new Uint8Array(g.cols * g.rows);
+    const cells = new Map();
+    const active = [];
+    const th = state.meta.profiles[state.profile].thresholds;
+
+    for (const f of state.geo.features) {
+      const p = f.properties;
+      if (p.confidence < state.conf - 1e-9) continue;
+      active.push(f);
+      const x = f.geometry.coordinates[0];
+      const y = f.geometry.coordinates[1];
+      const idx = cellIndexFor(x, y);
+      if (idx < 0) continue;
+      let c = cells.get(idx);
+      if (!c) { c = { count: 0, maxD: 0 }; cells.set(idx, c); }
+      c.count += 1;
+      if (p.diameter_m > c.maxD) c.maxD = p.diameter_m;
+    }
+
+    for (const [idx, c] of cells) {
+      const sizeZone = c.maxD >= th.size.unsafe_min_diameter_m ? 2
+        : c.maxD >= th.size.safe_max_diameter_m ? 1 : 0;
+      const densityZone = c.count >= th.density.unsafe_min_count ? 2
+        : c.count > th.density.safe_max_count ? 1 : 0;
+      zones[idx] = Math.max(sizeZone, densityZone);
+    }
+
+    let safe = 0, caution = 0, unsafe = 0;
+    for (let i = 0; i < zones.length; i++) {
+      if (zones[i] === 0) safe++;
+      else if (zones[i] === 1) caution++;
+      else unsafe++;
+    }
+
+    return {
+      zones, cells, active, th,
+      stats: { safe, caution, unsafe, total: zones.length }
+    };
+  }
+
+  function renderHazard(result) {
+    const g = state.meta.grid;
+    const S = 10;
+    const canvas = document.createElement("canvas");
+    canvas.width = g.cols * S;
+    canvas.height = g.rows * S;
+    const ctx = canvas.getContext("2d");
+    const colors = [
+      state.meta.colors.safe,
+      state.meta.colors.caution,
+      state.meta.colors.unsafe
+    ];
+    for (let r = 0; r < g.rows; r++) {
+      for (let c = 0; c < g.cols; c++) {
+        const z = result.zones[r * g.cols + c];
+        ctx.fillStyle = colors[z] || colors[0];
+        ctx.fillRect(c * S, r * S, S, S);
+        ctx.strokeStyle = "rgba(2,6,12,.20)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(c * S + 0.5, r * S + 0.5, S - 1, S - 1);
+      }
+    }
+    state.hazardLayer.setUrl(canvas.toDataURL("image/png"));
+    state.hazardLayer.setBounds(state.hazardBounds);
+    state.hazardLayer.setOpacity(state.hazardOn ? state.opacity : 0);
+  }
+
+  function updateStats(result) {
+    const s = result.stats;
+    const pct = (n) => s.total ? (100 * n / s.total) : 0;
+    $("stat-safe").textContent = s.safe.toLocaleString();
+    $("stat-caution").textContent = s.caution.toLocaleString();
+    $("stat-unsafe").textContent = s.unsafe.toLocaleString();
+    $("bar-safe").style.width = pct(s.safe) + "%";
+    $("bar-caution").style.width = pct(s.caution) + "%";
+    $("bar-unsafe").style.width = pct(s.unsafe) + "%";
+    $("boulder-count").textContent = result.active.length.toLocaleString();
+    $("detections-total").textContent = "of " + state.geo.features.length.toLocaleString() + " detected";
+    $("unsafe-share").textContent = pct(s.unsafe).toFixed(1) + "%";
+    $("cells-scanned").textContent = s.total.toLocaleString();
+    $("empty-note").hidden = result.active.length > 0;
+
+    // A consistency check against the Python-generated grid at its own conf.
+    if (!state.checkedServer && Math.abs(state.conf - state.meta.min_confidence) < 1e-9) {
+      const server = state.meta.profiles[state.profile].stats;
+      const mismatch = server && (
+        server.safe_cells !== s.safe ||
+        server.caution_cells !== s.caution ||
+        server.unsafe_cells !== s.unsafe
+      );
+      if (mismatch) {
+        console.warn("Client/server hazard mismatch", { client: s, server });
+      }
+      state.checkedServer = true;
+    }
+  }
+
+  function renderMarkers(active) {
+    state.markerLayer.clearLayers();
+    const markers = [];
+    for (const f of active) {
+      const p = f.properties;
+      const x = f.geometry.coordinates[0];
+      const y = f.geometry.coordinates[1];
+      const color = confColor(p.confidence);
+      const r = markerRadius(p.diameter_m);
+      const marker = L.circleMarker([y, x], {
+        radius: r,
+        color: "rgba(3,8,15,.85)",
+        weight: 1.2,
+        fillColor: color,
+        fillOpacity: 0.92,
+        opacity: 1
+      });
+      marker.bindPopup(() => boulderPopup(f), {
+        maxWidth: 320,
+        closeButton: true,
+        className: "boulder-popup",
+        autoPanPadding: [24, 24]
+      });
+      marker.bindTooltip(() => {
+        const q = f.properties;
+        return "<b>" + fmt1(q.diameter_m) + " m</b> boulder · " + Math.round(q.confidence * 100) + "% conf";
+      }, {
+        direction: "top",
+        offset: [0, -6],
+        opacity: 1,
+        className: "boulder-tip",
+        sticky: true
+      });
+      marker.on("mouseover", () => marker.setRadius(Math.min(r + 2.5, 18)));
+      marker.on("mouseout", () => marker.setRadius(r));
+      marker.addTo(state.markerLayer);
+      markers.push(marker);
+    }
+    return markers;
+  }
+
+  function boulderPopup(f) {
+    const p = f.properties;
+    const x = f.geometry.coordinates[0];
+    const y = f.geometry.coordinates[1];
+    const idx = cellIndexFor(x, y);
+    const z = idx >= 0 && state.lastGrid ? state.lastGrid.zones[idx] : -1;
+    const pct = Math.round(p.confidence * 100);
+    const gsd = Number(p.gsd_m || state.meta.gsd_m);
+    const dia = p.diameter_m < 10 ? fmt2(p.diameter_m) : fmt1(p.diameter_m);
+    const detailUrl = "boulder-detail.html?id=" + encodeURIComponent(p.id) +
+      "&conf=" + state.conf +
+      "&profile=" + state.profile +
+      "&opacity=" + state.opacity;
+    return (
+      '<div class="popup-card">' +
+        '<div class="popup-head">' +
+          '<span class="popup-kicker">Boulder ' + String(p.id || "").replace("boulder_", "#") + '</span>' +
+          '<span class="zone-pill ' + zoneClass(z) + '">' + zoneLabel(z) + '</span>' +
+        '</div>' +
+        '<div class="popup-diameter">' + dia + ' <span>m</span></div>' +
+        '<div class="conf-row"><span>Detection confidence</span><b>' + pct + '%</b></div>' +
+        '<div class="conf-track"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="popup-grid">' +
+          '<div><dt>Box size</dt><dd>' + fmt1(p.diameter_px) + ' px</dd></div>' +
+          '<div><dt>GSD</dt><dd>' + fmt2(gsd) + ' m/px</dd></div>' +
+          '<div><dt>Hazard cell</dt><dd>' + state.meta.grid.cell_size_m + ' × ' + state.meta.grid.cell_size_m + ' m</dd></div>' +
+          '<div><dt>Detector</dt><dd>' + String(p.source || "unknown") + '</dd></div>' +
+        '</div>' +
+        '<div class="popup-note">Diameter = longest box side × GSD from the tile GeoTIFF transform. Cell hazard may also be raised by nearby boulders.</div>' +
+        '<div class="popup-foot"><span>' + String(p.tile || "tile") + '</span><span>' +
+          (p.lat != null ? Number(p.lat).toFixed(4) + '°, ' + Number(p.lon).toFixed(4) + '°' : "") +
+        '</span></div>' +
+        '<div class="popup-action" style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(148,163,184,.12);text-align:center">' +
+          '<a href="' + detailUrl + '" class="detail-link" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:rgba(108,200,255,.1);color:var(--accent);font-size:11px;font-weight:650;text-decoration:none;transition:.15s" onmouseover="this.style.background=\'rgba(108,200,255,.2)\'" onmouseout="this.style.background=\'rgba(108,200,255,.1)\'">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+            '<span>View Detail →</span>' +
+          '</a>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function onHazardClick(e) {
+    if (!state.lastGrid) return;
+    const idx = cellIndexFor(e.latlng.lng, e.latlng.lat);
+    if (idx < 0) {
+      state.map.closePopup();
+      return;
+    }
+    const g = state.meta.grid;
+    const z = state.lastGrid.zones[idx];
+    const cell = state.lastGrid.cells.get(idx) || { count: 0, maxD: 0 };
+    const row = Math.floor(idx / g.cols);
+    const col = idx % g.cols;
+    const west = g.bounds_m[0] + col * g.cell_size_m;
+    const north = g.bounds_m[3] - row * g.cell_size_m;
+    const html =
+      '<div class="popup-card cell-popup">' +
+        '<div class="popup-head">' +
+          '<span class="popup-kicker">Hazard cell ' + row + '·' + col + '</span>' +
+          '<span class="zone-pill ' + zoneClass(z) + '">' + zoneLabel(z) + '</span>' +
+        '</div>' +
+        '<div class="popup-diameter">' + (cell.count ? fmt1(cell.maxD) : "0") + ' <span>m max</span></div>' +
+        '<div class="popup-grid">' +
+          '<div><dt>Boulders</dt><dd>' + cell.count + '</dd></div>' +
+          '<div><dt>Cell size</dt><dd>' + g.cell_size_m + ' × ' + g.cell_size_m + ' m</dd></div>' +
+          '<div><dt>Profile</dt><dd>' + state.meta.profiles[state.profile].label + '</dd></div>' +
+          '<div><dt>Confidence ≥</dt><dd>' + fmt2(state.conf) + '</dd></div>' +
+        '</div>' +
+        '<div class="popup-zone-note">' +
+          (z === 0
+            ? "No size or density threshold is exceeded in this cell."
+            : z === 1
+              ? "Caution: survey before landing or driving through this cell."
+              : "Unsafe: boulder size or density exceeds the selected profile limit.") +
+        '</div>' +
+        '<div class="popup-foot"><span>' + Math.round(west) + ' m E, ' + Math.round(north) + ' m N</span><span>Cell ' + (idx + 1) + ' / ' + state.lastGrid.zones.length + '</span></div>' +
+      '</div>';
+    L.popup({ maxWidth: 330, className: "boulder-popup", autoPanPadding: [24, 24] })
+      .setLatLng(e.latlng)
+      .setContent(html)
+      .openOn(state.map);
+  }
+
+  /* ------------------------------------------------------------- UI sync */
+  function updateProfileUI() {
+    const prof = state.meta.profiles[state.profile];
+    const th = prof.thresholds;
+    $("profile-label").textContent = prof.label;
+    $("profile-desc").textContent = prof.description || "";
+    $("th-size-unsafe").textContent = "≥ " + fmt1(th.size.unsafe_min_diameter_m) + " m";
+    $("th-density-unsafe").textContent = "≥ " + th.density.unsafe_min_count + " / cell";
+    $("th-size-caution").textContent = fmt1(th.size.safe_max_diameter_m) + "–" + fmt1(th.size.caution_max_diameter_m) + " m";
+    $("th-density-caution").textContent = (th.density.safe_max_count + 1) + "–" + th.density.caution_max_count + " / cell";
+    document.querySelectorAll("#profile-toggle button").forEach((b) => {
+      b.classList.toggle("active", b.dataset.profile === state.profile);
+    });
+  }
+
+  function syncControls() {
+    $("conf").value = state.conf;
+    $("conf-val").textContent = fmt2(state.conf);
+    $("opacity").value = state.opacity;
+    $("opacity-val").textContent = Math.round(state.opacity * 100) + "%";
+    const t = $("hazard-toggle");
+    const tt = $("hazard-toggle-top");
+    t.classList.toggle("active", state.hazardOn);
+    tt.classList.toggle("active", state.hazardOn);
+    t.textContent = state.hazardOn ? "⚠️ Hazard map" : "⚠️ Hazard off";
+    $("hazard-state").textContent = state.hazardOn ? "ON" : "OFF";
+    $("hazard-toggle-top").querySelector(".label").textContent = state.hazardOn ? "Hazard Map" : "Hazard Off";
+  }
+
+  function updateURL() {
+    const u = new URL(location.href);
+    u.searchParams.set("profile", state.profile);
+    u.searchParams.set("conf", state.conf.toFixed(2));
+    u.searchParams.set("opacity", state.opacity.toFixed(2));
+    if (state.hazardOn) u.searchParams.delete("hazard");
+    else u.searchParams.set("hazard", "0");
+    history.replaceState(null, "", u);
+  }
+
+  function updateAll(rebuildMarkers) {
+    if (!state.meta) return;
+    const result = recomputeHazard();
+    state.lastGrid = result;
+    renderHazard(result);
+    updateStats(result);
+    if (rebuildMarkers !== false) renderMarkers(result.active);
+    updateProfileUI();
+    syncControls();
+    updateURL();
+  }
+
+  function scheduleUpdate() {
+    clearTimeout(scheduled);
+    scheduled = setTimeout(() => updateAll(true), 45);
+  }
+
+  /* ------------------------------------------------------------------ UI */
+  function bindUI() {
+    document.querySelectorAll("#profile-toggle button").forEach((b) => {
+      b.addEventListener("click", () => {
+        if (state.profile === b.dataset.profile) return;
+        state.profile = b.dataset.profile;
+        state.checkedServer = false;
+        updateAll(true);
+        showToast(state.meta.profiles[state.profile].label + " thresholds applied to " + state.geo.features.length + " boulders", 2600);
+      });
+    });
+
+    $("conf").addEventListener("input", (e) => {
+      state.conf = clamp(parseFloat(e.target.value), 0.05, 0.95);
+      $("conf-val").textContent = fmt2(state.conf);
+      scheduleUpdate();
+    });
+
+    $("opacity").addEventListener("input", (e) => {
+      state.opacity = clamp(parseFloat(e.target.value), 0, 1);
+      $("opacity-val").textContent = Math.round(state.opacity * 100) + "%";
+      if (state.hazardLayer) state.hazardLayer.setOpacity(state.hazardOn ? state.opacity : 0);
+      updateURL();
+    });
+
+    const toggleHazard = () => {
+      state.hazardOn = !state.hazardOn;
+      if (state.hazardOn) {
+        state.hazardLayer.addTo(state.map);
+        state.hazardLayer.setOpacity(state.opacity);
+      } else {
+        state.map.removeLayer(state.hazardLayer);
+      }
+      syncControls();
+      updateURL();
+      showToast(state.hazardOn ? "Hazard overlay on" : "Hazard overlay off", 1800);
+    };
+    $("hazard-toggle").addEventListener("click", toggleHazard);
+    $("hazard-toggle-top").addEventListener("click", toggleHazard);
+
+    const resetView = () => {
+      state.map.closePopup();
+      state.map.fitBounds(state.basemapBounds, { padding: [26, 26] });
+    };
+    $("reset-view").addEventListener("click", resetView);
+
+    $("about-btn").addEventListener("click", () => { $("about-modal").hidden = false; });
+    $("about-close").addEventListener("click", () => { $("about-modal").hidden = true; });
+    $("about-modal").addEventListener("click", (e) => {
+      if (e.target === $("about-modal")) $("about-modal").hidden = true;
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") $("about-modal").hidden = true;
+    });
+  }
+
+  function fillStaticMeta() {
+    const m = state.meta;
+    const site = m.site || {};
+    const product = (m.basemap && m.basemap.source) || {};
+    $("site-name").textContent = site.name || "Lunar site";
+    $("site-coords").textContent = (site.center_lat != null
+      ? Number(site.center_lat).toFixed(4) + "° " + (site.center_lat >= 0 ? "N" : "S") + " · " +
+        Number(site.center_lon).toFixed(4) + "° " + (site.center_lon >= 0 ? "E" : "W")
+      : "Local lunar tangent plane");
+    const gsd = Number(m.gsd_m != null ? m.gsd_m : (m.basemap || {}).gsd_m);
+    $("gsd-badge").textContent = Number.isFinite(gsd) ? fmt2(gsd) + " m/px" : "GSD n/a";
+    $("cell-legend").textContent = m.grid.cell_size_m + " m cells";
+    $("map-sub").textContent = "Local lunar tangent plane · " + m.grid.cols + "×" + m.grid.rows + " cells · " + m.grid.cell_size_m + " m";
+
+    const detector = String(m.detector || "unknown");
+    const pretty = detector === "yolov8n" ? "YOLOv8n"
+      : detector === "yolov8n+classical" ? "YOLOv8n + CV"
+      : detector === "classical" ? "Classical CV" : detector;
+    $("model-badge").textContent = pretty;
+    $("model-badge").title = m.weights ? "Weights: " + m.weights : "Fallback detector (no PyTorch checkpoint)";
+    const srcType = product.type === "real_nac" ? "Real LROC NAC" : product.type === "synthetic_fallback" ? "Synthetic fallback" : "GeoTIFF";
+    $("source-type").textContent = srcType + " · live hazard assessment";
+    $("product-badge").textContent = product.type === "real_nac" ? "Apollo 17 NAC" : (product.type || "basemap");
+    $("about-model").textContent = pretty + (m.training && m.training.metrics && m.training.metrics["metrics/mAP50(B)"]
+      ? " · mAP50 " + Number(m.training.metrics["metrics/mAP50(B)"]).toFixed(2)
+      : "");
+  }
+
+  function parseURL() {
+    const q = new URLSearchParams(location.search);
+    const p = q.get("profile");
+    if (p && state.meta.profiles[p]) state.profile = p;
+    else if (state.meta.default_profile && state.meta.profiles[state.meta.default_profile]) state.profile = state.meta.default_profile;
+    const c = parseFloat(q.get("conf"));
+    state.conf = Number.isFinite(c) ? clamp(c, 0.05, 0.95) : clamp(Number(state.meta.min_confidence || 0.25), 0.05, 0.95);
+    const o = parseFloat(q.get("opacity"));
+    state.opacity = Number.isFinite(o) ? clamp(o, 0, 1) : clamp(Number((state.meta.viewer || {}).default_opacity || 0.55), 0, 1);
+    state.hazardOn = q.get("hazard") !== "0";
+  }
+
+  /* ----------------------------------------------------------------- boot */
+  function boot() {
+    // Redirect to Upload page by default so user processes an image first
+    const params = new URLSearchParams(location.search);
+    if (!params.has('loaded')) {
+      location.href = 'upload.html';
+      return;
+    }
+
+    Promise.all([
+      fetchJSON("data/hazard_meta.json"),
+      fetchJSON("data/detections.geojson")
+    ]).then(([meta, geo]) => {
+      state.meta = meta;
+      state.geo = geo;
+      if (!meta.grid || !meta.profiles || !geo.features) {
+        throw new Error("hazard_meta.json / detections.geojson are missing required fields");
+      }
+      parseURL();
+      fillStaticMeta();
+      initMap();
+      bindUI();
+      updateAll(true);
+      $("loading").classList.add("hidden");
+      updateScaleBar();
+      // Read-only debug handle for inspection and automated smoke tests.
+      window.__lunarViewer = state;
+      const n = geo.features.length;
+      const tiles = meta.basemap && meta.basemap.width_px ? Math.round(meta.basemap.width_px) : 0;
+      showToast("Loaded " + n + " boulder" + (n === 1 ? "" : "s") + " · " + meta.grid.cols + "×" + meta.grid.rows + " hazard grid" + (tiles ? " · " + tiles + " px basemap" : ""), 4200);
+      setTimeout(() => $("empty-note").hidden = state.lastGrid.active.length > 0, 50);
+    }).catch(showError);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>

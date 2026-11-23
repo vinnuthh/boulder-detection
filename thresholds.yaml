@@ -1,0 +1,33 @@
+# ============================================================================
+# Hazard logic — tune these and re-run 03_infer_and_hazard.py
+# size values are boulder diameters in meters; density values are counts of
+# detections per 50m x 50m hazard cell.
+# ============================================================================
+profiles:
+  lander:
+    label: "Lander"
+    description: "Conservative: 1 m safe limit, 3 m+ boulders are lethal."
+    size:
+      safe_max_diameter_m: 1.0
+      caution_max_diameter_m: 3.0
+      unsafe_min_diameter_m: 3.0
+    density:
+      safe_max_count: 3
+      caution_max_count: 10
+      unsafe_min_count: 11
+  rover:
+    label: "Rover"
+    description: "Rovers can thread smaller rocks: 0.5 m safe, 1.5 m+ unsafe."
+    size:
+      safe_max_diameter_m: 0.5
+      caution_max_diameter_m: 1.5
+      unsafe_min_diameter_m: 1.5
+    density:
+      safe_max_count: 5
+      caution_max_count: 15
+      unsafe_min_count: 16
+colors:
+  safe: "#00FF66"
+  caution: "#FFA500"
+  unsafe: "#FF2D2D"
+  opacity: 0.5

@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+data/raw/
+data/tiles/images/
+data/tiles/labels/
+data/synthetic/images/
+data/synthetic/labels/
+data/train/
+data/labels/*.json
+models/weights/*.pt
+models/runs/
+viewer/data/*.tif
+*.log
+data/labels/_*
+runs/

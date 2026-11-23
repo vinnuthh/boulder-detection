@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landing Safety — Lunar Boulder Hazard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230b1220'/%3E%3Ccircle cx='27' cy='26' r='16' fill='%23dbe7f7'/%3E%3Ccircle cx='38' cy='36' r='13' fill='%237dd3fc' opacity='.55'/%3E%3C/svg%3E">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.js",
+    "three/addons/controls/OrbitControls.js": "./vendor/three/addons/controls/OrbitControls.js"
+  }
+}
+</script>
+<style>
+  :root{
+    --bg:#05070d;--panel:rgba(12,18,30,.9);--panel-solid:#0b1220;
+    --line:rgba(148,163,184,.16);--line-strong:rgba(148,163,184,.28);
+    --text:#e8eef9;--muted:#8c9bb2;--faint:#5d6b80;
+    --safe:#00ff66;--caution:#ffa500;--unsafe:#ff2d2d;
+    --accent:#7dd3fc;--accent-2:#c084fc;--radius:14px;
+    --shadow:0 18px 50px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  html{margin:0;min-height:100%}
+  body{
+    margin:0;min-height:100vh;background:
+      radial-gradient(1200px 700px at 78% -10%,rgba(56,89,140,.22),transparent 60%),
+      radial-gradient(900px 600px at 6% 100%,rgba(39,61,96,.18),transparent 60%),
+      var(--bg);
+    color:var(--text);font-family:"Segoe UI","Inter",system-ui,-apple-system,sans-serif;font-size:14px;
+  }
+  button,input{font:inherit}
+  button{color:inherit}
+  a{color:inherit}
+  .top{
+    display:flex;align-items:center;justify-content:space-between;gap:20px;
+    padding:18px 26px;border-bottom:1px solid var(--line);
+    background:rgba(5,8,14,.72);backdrop-filter:blur(14px);position:sticky;top:0;z-index:20;
+  }
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#e2ebf8,#9fb0c7 55%,#7689a3);
+    box-shadow:inset -6px -8px 14px rgba(0,0,0,.28),0 10px 24px rgba(0,0,0,.3);position:relative;flex:none}
+  .logo::after{content:"";position:absolute;inset:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#233149,#070c15);box-shadow:inset 0 0 10px #000}
+  .brand h1{font-size:16px;margin:0;letter-spacing:.2px}
+  .brand p{margin:2px 0 0;font-size:10.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted)}
+  .nav{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .nav a,.nav span{
+    display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;
+    border:1px solid var(--line);background:rgba(10,17,29,.8);color:#cbd8ea;text-decoration:none;
+    font-size:11.5px;font-weight:650;transition:.16s;white-space:nowrap;
+  }
+  .nav a:hover{border-color:var(--line-strong);background:rgba(22,34,52,.9);color:#fff}
+  .nav .active{border-color:rgba(255,165,0,.42);background:rgba(255,165,0,.12);color:#ffd08a}
+  .wrap{max-width:1500px;margin:0 auto;padding:24px 26px 46px}
+  .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin:2px 0 20px;flex-wrap:wrap}
+  .hero h2{margin:0;font-size:22px;letter-spacing:-.3px}
+  .hero p{margin:7px 0 0;color:var(--muted);max-width:720px;line-height:1.55;font-size:12.5px}
+  .badge{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;
+    padding:7px 11px;font-size:11px;color:#b9c8dd;background:rgba(15,23,38,.7)}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--safe);box-shadow:0 0 8px var(--safe)}
+  .dot.warn{background:var(--caution);box-shadow:0 0 8px var(--caution)}
+  .layout{display:grid;grid-template-columns:400px minmax(0,1fr);gap:18px;align-items:start}
+  .panel{background:linear-gradient(160deg,rgba(15,23,38,.92),rgba(8,13,23,.9));border:1px solid var(--line);
+    border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .panel-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .panel-head h3{margin:0;font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:#aebed4}
+  .panel-body{padding:16px}
+  .drop{
+    position:relative;border:1px dashed rgba(148,163,184,.34);border-radius:12px;padding:28px 18px;
+    text-align:center;cursor:pointer;transition:.18s;background:rgba(255,255,255,.018);
+  }
+  .drop:hover,.drop.over{border-color:rgba(125,211,252,.65);background:rgba(125,211,252,.055)}
+  .drop .big{font-size:26px;line-height:1;margin-bottom:10px;color:var(--accent)}
+  .drop b{display:block;font-size:13px;margin-bottom:5px}
+  .drop span{display:block;font-size:11px;color:var(--muted);line-height:1.5}
+  .drop input{display:none}
+  .field{margin-top:16px}
+  .field label{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#c3d1e4;font-weight:600;margin-bottom:7px}
+  .field label small{font-weight:500;color:var(--faint);font-size:10.5px}
+  .field input[type=number]{
+    width:100%;background:rgba(4,8,15,.7);border:1px solid var(--line);border-radius:9px;
+    padding:9px 11px;color:var(--text);outline:none;font-size:12.5px;font-variant-numeric:tabular-nums;
+  }
+  .field input[type=number]:focus{border-color:rgba(125,211,252,.55);box-shadow:0 0 0 3px rgba(125,211,252,.08)}
+  .hint{font-size:10.5px;color:var(--faint);line-height:1.55;margin-top:7px}
+  .btn{
+    width:100%;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    border:1px solid rgba(125,211,252,.35);border-radius:10px;padding:11px 14px;cursor:pointer;
+    background:linear-gradient(120deg,rgba(125,211,252,.19),rgba(125,211,252,.07));color:#dff5ff;
+    font-weight:700;font-size:12.5px;letter-spacing:.2px;transition:.16s;margin-top:14px;
+  }
+  .btn:hover:not(:disabled){background:linear-gradient(120deg,rgba(125,211,252,.28),rgba(125,211,252,.12));border-color:rgba(125,211,252,.55)}
+  .btn:disabled{opacity:.48;cursor:not-allowed}
+  .btn.ghost{border-color:var(--line);background:rgba(255,255,255,.035);color:#c8d6e8;font-weight:600;margin-top:9px}
+  .btn.ghost:hover{background:rgba(255,255,255,.07);border-color:var(--line-strong)}
+  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+  .meta{border:1px solid var(--line);border-radius:9px;padding:9px 10px;background:rgba(255,255,255,.022)}
+  .meta span{display:block;font-size:9px;letter-spacing:.9px;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+  .meta b{font-size:11.5px;color:#dbe7f7;font-weight:650;line-height:1.35;display:block}
+  .notice{
+    margin-top:12px;border:1px solid rgba(255,165,0,.28);background:rgba(255,165,0,.07);
+    border-radius:9px;padding:10px 11px;font-size:10.5px;line-height:1.55;color:#f0c98a;display:none;
+  }
+  .notice.show{display:block}
+  .notice code{font-size:10px;color:#ffe1b0;background:rgba(0,0,0,.25);padding:1px 4px;border-radius:4px}
+  .result{min-height:520px;position:relative}
+  .empty{
+    min-height:520px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+    text-align:center;padding:40px;color:var(--muted);
+  }
+  .empty .orb{width:92px;height:92px;border-radius:50%;border:1px solid rgba(125,211,252,.22);
+    background:radial-gradient(circle at 36% 32%,rgba(125,211,252,.18),rgba(10,17,29,.2) 58%,transparent 70%);
+    box-shadow:0 0 60px rgba(125,211,252,.08) inset;position:relative}
+  .empty .orb::after{content:"";position:absolute;inset:24px;border-radius:50%;border:1px dashed rgba(148,163,184,.28)}
+  .empty b{color:#c9d7ea;font-size:14px}
+  .empty span{font-size:11.5px;max-width:420px;line-height:1.6}
+  .result-body{display:none}
+  .result-body.show{display:block}
+  .verdict{padding:18px 18px 16px;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+  .verdict-main{display:flex;gap:13px;align-items:center;min-width:0}
+  .verdict-icon{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-size:20px;flex:none;
+    border:1px solid var(--line);background:rgba(255,255,255,.035)}
+  .verdict h2{margin:0;font-size:22px;letter-spacing:-.4px;line-height:1.15}
+  .verdict p{margin:5px 0 0;font-size:11.5px;color:var(--muted);line-height:1.5;max-width:640px}
+  .conf{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+  .conf b{font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+  .conf span{font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--faint)}
+  .z-safe .verdict-icon{color:var(--safe);border-color:rgba(0,255,102,.3);background:rgba(0,255,102,.07)}
+  .z-safe .verdict h2,.z-safe .conf b{color:var(--safe)}
+  .z-caution .verdict-icon{color:var(--caution);border-color:rgba(255,165,0,.3);background:rgba(255,165,0,.07)}
+  .z-caution .verdict h2,.z-caution .conf b{color:var(--caution)}
+  .z-unsafe .verdict-icon{color:var(--unsafe);border-color:rgba(255,45,45,.32);background:rgba(255,45,45,.07)}
+  .z-unsafe .verdict h2,.z-unsafe .conf b{color:var(--unsafe)}
+  .stage{padding:16px;border-bottom:1px solid var(--line)}
+  .canvas-wrap{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#02040a;line-height:0}
+  #preview{width:100%;height:auto;display:block}
+  #canvas-3d-wrap{position:relative;width:100%;display:none;line-height:0;min-height:320px}
+  #canvas-3d-wrap canvas{display:block}
+  .stage-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px;font-size:10px;color:var(--faint);line-height:1.4;flex-wrap:wrap}
+  .legend{display:flex;gap:12px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+  .stats{padding:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:9px;border-bottom:1px solid var(--line)}
+  .stat{border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:rgba(255,255,255,.022)}
+  .stat span{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+  .stat b{font-size:22px;line-height:1;font-variant-numeric:tabular-nums}
+  .stat small{display:block;font-size:10px;color:var(--muted);margin-top:5px}
+  .stat.s b{color:var(--safe)}.stat.c b{color:var(--caution)}.stat.u b{color:var(--unsafe)}
+  .lower{padding:16px;display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+  .lower h4{margin:0 0 8px;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#9fb0c7}
+  .rec{font-size:12px;line-height:1.65;color:#c9d6e6;margin:0}
+  .target{margin-top:10px;border:1px solid rgba(125,211,252,.24);border-radius:9px;padding:10px 11px;background:rgba(125,211,252,.05);font-size:11px;line-height:1.55;color:#c6e7f7;display:none}
+  .target.show{display:block}
+  .det-list{display:flex;flex-direction:column;gap:6px;max-height:170px;overflow:auto;padding-right:4px}
+  .det{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:10.5px;color:#b9c8dd;background:rgba(255,255,255,.02)}
+  .det b{font-size:11.5px;color:#e4eefb;font-weight:650}
+  .footer{margin-top:18px;font-size:10px;color:var(--faint);line-height:1.6;text-align:center}
+  .loading{
+    position:absolute;inset:0;background:rgba(5,8,14,.72);backdrop-filter:blur(5px);z-index:9;
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  }
+  .loading.show{display:flex}
+  .spinner{width:34px;height:34px;border-radius:50%;border:2px solid rgba(125,211,252,.18);border-top-color:var(--accent);animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading b{font-size:12px;color:#d5e4f5}
+  .loading span{font-size:10.5px;color:var(--muted)}
+  .err{display:none;margin:0 16px 16px;padding:10px 12px;border:1px solid rgba(255,45,45,.3);border-radius:9px;background:rgba(255,45,45,.07);font-size:11px;line-height:1.5;color:#ffb3b3}
+  .err.show{display:block}
+  @media (max-width:1050px){.layout{grid-template-columns:1fr}.result{min-height:0}.lower{grid-template-columns:1fr}}
+  @media (max-width:640px){
+    .wrap{padding:16px 14px 36px}.top{padding:14px 14px}.brand p{display:none}
+    .hero h2{font-size:19px}.stats{grid-template-columns:1fr 1fr}.nav span{display:none}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="logo" aria-hidden="true"></div>
+    <div>
+      <h1>Lunar Boulder Hazard</h1>
+      <p>Landing safety · upload analysis</p>
+    </div>
+  </div>
+  <nav class="nav">
+    <a href="index.html?loaded=1">◧ 2D Hazard Map</a>
+    <a href="3d.html">◈ 3D Site</a>
+    <span class="active">⬆ Upload</span>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <div>
+      <h2>Is this patch safe to land on?</h2>
+      <p>
+        Upload a lunar surface image. A model trained on the labelled synthetic dataset scores
+        every 50 m cell as <b style="color:var(--safe)">safe</b>,
+        <b style="color:var(--caution)">caution</b>, or
+        <b style="color:var(--unsafe)">unsafe</b> for the lander profile, then highlights a
+        candidate landing target.
+      </p>
+    </div>
+    <div class="badge"><span class="dot" id="health-dot"></span><span id="health-text">checking model…</span></div>
+  </div>
+
+  <div class="layout">
+    <section class="panel">
+      <div class="panel-head"><h3>Image input</h3><span style="font-size:10px;color:var(--faint)">PNG · JPG · WEBP</span></div>
+      <div class="panel-body">
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept="image/png,image/jpeg,image/webp">
+          <div class="big">⬆</div>
+          <b>Drop a lunar image here</b>
+          <span>or click to browse · up to ~18 MB</span>
+        </label>
+
+        <div class="field">
+          <label for="gsd">Ground sample distance <small>metres / pixel</small></label>
+          <input type="number" id="gsd" value="0.5" min="0.02" max="20" step="0.01">
+          <div class="hint">LROC NAC imagery is 0.5 m/px. If you are unsure, leave the default: each cell is then 100 px = 50 m.</div>
+        </div>
+
+        <button class="btn" id="analyze" type="button">Analyze landing safety</button>
+        <button class="btn ghost" id="clear" type="button">Clear image</button>
+
+        <div class="notice" id="notice">
+          <b>Upload API is not running.</b><br>
+          Start the demo server with <code>python scripts\serve_demo.py</code>, then open
+          <code>http://localhost:8000/upload.html</code>.
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta"><span>Model</span><b id="m-model">loading…</b></div>
+          <div class="meta"><span>Test accuracy</span><b id="m-acc">—</b></div>
+          <div class="meta"><span>Macro F1</span><b id="m-f1">—</b></div>
+          <div class="meta"><span>Training labels</span><b>7,495 boulders</b></div>
+        </div>
+        <div class="hint" style="margin-top:12px">
+          Safety decision: trained patch classifier. Boulder boxes shown on the image are
+          classical CV detections, used for explanation only. Not flight-certified.
+        </div>
+      </div>
+    </section>
+
+    <section class="panel result" id="result">
+      <div class="empty" id="empty">
+        <div class="orb" aria-hidden="true"></div>
+        <b>No image analyzed yet</b>
+        <span>Choose a surface image and press <b>Analyze landing safety</b>. The result will show a 50 m hazard grid, a verdict, and the best landing cell.</span>
+      </div>
+
+      <div class="result-body" id="result-body">
+        <div class="verdict" id="verdict">
+          <div class="verdict-main">
+            <div class="verdict-icon" id="v-icon">✓</div>
+            <div>
+              <h2 id="v-headline">SAFE TO LAND</h2>
+              <p id="v-confidence">Model confidence 0%</p>
+            </div>
+          </div>
+          <div class="conf"><b id="v-pct">0%</b><span>best-cell confidence</span></div>
+        </div>
+
+        <div class="stage">
+          <div class="canvas-wrap">
+            <canvas id="preview"></canvas>
+            <div id="canvas-3d-wrap" style="position:relative;width:100%;display:none;"></div>
+            <button class="view-toggle" id="view-toggle" style="position:absolute;top:10px;right:10px;z-index:10;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:rgba(10,17,29,.9);color:#cbd8ea;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;backdrop-filter:blur(8px);" title="Toggle 3D view">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 18a5 5 0 0 1-10 0"/><path d="M12 2a7 7 0 0 1 7 7"/><path d="M22 12A10 10 0 0 1 2 12"/></svg>
+              <span id="view-label">3D View</span>
+            </button>
+          </div>
+          <div class="stage-foot">
+            <div class="legend">
+              <span><i style="background:var(--safe)"></i>Safe</span>
+              <span><i style="background:var(--caution)"></i>Caution</span>
+              <span><i style="background:var(--unsafe)"></i>Unsafe</span>
+              <span><i style="background:#a8b6c8;border-radius:50%"></i>Boulder (enlarged)</span>
+              <span><i style="background:#fff"></i>Landing target</span>
+            </div>
+            <span id="stage-meta">—</span>
+          </div>
+        </div>
+
+        <div class="err" id="err"></div>
+
+        <div class="stats">
+          <div class="stat s"><span>Safe</span><b id="s-safe">0</b><small id="s-safe-pct">0% of cells</small></div>
+          <div class="stat c"><span>Caution</span><b id="s-caution">0</b><small id="s-caution-pct">0% of cells</small></div>
+          <div class="stat u"><span>Unsafe</span><b id="s-unsafe">0</b><small id="s-unsafe-pct">0% of cells</small></div>
+        </div>
+
+        <div class="lower">
+          <div>
+            <h4>Recommendation</h4>
+            <p class="rec" id="recommendation"></p>
+            <div class="target" id="target"></div>
+          </div>
+          <div>
+            <h4>Detected boulders <span style="color:var(--faint);font-weight:500;text-transform:none;letter-spacing:0">(classical)</span></h4>
+            <div class="det-list" id="det-list"><div class="det">No boxes above the display threshold.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="loading" id="loading">
+        <div class="spinner" aria-hidden="true"></div>
+        <b>Reading the surface…</b>
+        <span>classifying 50 m cells and scoring the landing target</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer">
+    Demo only — not flight-certified decision support. The upload model is a HOG +
+    HistGradientBoosting classifier trained on synthetic 512 px tiles; PyTorch/YOLOv8n is
+    blocked on this machine by Windows Smart App Control. GSD is assumed unless supplied.
+  </div>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const fileInput = $("file");
+  const drop = $("drop");
+  const analyzeBtn = $("analyze");
+  const clearBtn = $("clear");
+  const canvas = $("preview");
+  const ctx = canvas.getContext("2d");
+  const COLORS = { 0: "#00ff66", 1: "#ffa500", 2: "#ff2d2d" };
+  let currentFile = null;
+  let currentResult = null;
+  let apiReady = false;
+
+  function fmtPct(v) { return (Math.round(Number(v) * 1000) / 10).toFixed(1).replace(".0", "") + "%"; }
+
+  async function health() {
+    try {
+      const r = await fetch("/api/health", { cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j.error || "model unavailable");
+      apiReady = true;
+      $("health-dot").classList.remove("warn");
+      $("health-text").textContent = "model ready";
+      $("m-model").textContent = j.model || "HOG + HGB";
+      $("m-acc").textContent = j.accuracy != null ? fmtPct(j.accuracy) : "—";
+      $("m-f1").textContent = j.macro_f1 != null ? Number(j.macro_f1).toFixed(3) : "—";
+      $("notice").classList.remove("show");
+    } catch (e) {
+      apiReady = false;
+      $("health-dot").classList.add("warn");
+      $("health-text").textContent = "upload API offline";
+      $("notice").classList.add("show");
+      $("m-model").textContent = "not connected";
+    }
+  }
+
+  function showError(msg) {
+    const el = $("err");
+    el.textContent = msg;
+    el.classList.add("show");
+  }
+  function clearError() { $("err").classList.remove("show"); }
+
+  function setFile(file) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { showError("Please choose a PNG, JPG or WEBP image."); return; }
+    if (file.size > 18 * 1024 * 1024) { showError("That image is larger than ~18 MB. Crop it or downscale it first."); return; }
+    currentFile = file;
+    currentResult = null;
+    clearError();
+    const img = new Image();
+    img.onload = () => {
+      drawBase(img);
+      $("empty").style.display = "none";
+      $("result-body").classList.add("show");
+      $("v-headline").textContent = "READY TO ANALYZE";
+      $("v-confidence").textContent = file.name;
+      $("v-pct").textContent = "—";
+      $("recommendation").textContent = "Press “Analyze landing safety” to score this image.";
+      $("target").classList.remove("show");
+      $("det-list").innerHTML = '<div class="det">Analysis pending.</div>';
+      $("stage-meta").textContent = `${img.naturalWidth} × ${img.naturalHeight} px`;
+      resetVerdict();
+    };
+    img.onerror = () => showError("The browser could not decode that image.");
+    img.src = URL.createObjectURL(file);
+  }
+
+  function resetVerdict() {
+    const v = $("verdict");
+    v.classList.remove("z-safe", "z-caution", "z-unsafe");
+    $("v-icon").textContent = "•";
+    $("v-pct").textContent = "—";
+    $("s-safe").textContent = "0"; $("s-caution").textContent = "0"; $("s-unsafe").textContent = "0";
+    $("s-safe-pct").textContent = "0% of cells";
+    $("s-caution-pct").textContent = "0% of cells";
+    $("s-unsafe-pct").textContent = "0% of cells";
+  }
+
+  function drawBase(img) {
+    const maxW = 1280;
+    const scale = Math.min(1, maxW / img.naturalWidth);
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    canvas._img = img;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  }
+
+  function renderOverlay(result) {
+    const img = canvas._img;
+    if (!img) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const grid = result.grid;
+    const cw = canvas.width / grid.cols;
+    const ch = canvas.height / grid.rows;
+    for (let r = 0; r < grid.rows; r++) {
+      for (let c = 0; c < grid.cols; c++) {
+        const z = grid.zones[r][c];
+        ctx.fillStyle = COLORS[z] + "40";
+        ctx.fillRect(c * cw, r * ch, Math.ceil(cw) + 1, Math.ceil(ch) + 1);
+      }
+    }
+    ctx.strokeStyle = "rgba(0,0,0,.28)";
+    ctx.lineWidth = 0.6;
+    for (let c = 0; c <= grid.cols; c++) {
+      ctx.beginPath(); ctx.moveTo(c * cw, 0); ctx.lineTo(c * cw, canvas.height); ctx.stroke();
+    }
+    for (let r = 0; r <= grid.rows; r++) {
+      ctx.beginPath(); ctx.moveTo(0, r * ch); ctx.lineTo(canvas.width, r * ch); ctx.stroke();
+    }
+
+    const proc = result.processed || { width: canvas.width, height: canvas.height };
+    const sx = canvas.width / proc.width;
+    const sy = canvas.height / proc.height;
+    const dets = result.detections || [];
+    ctx.lineWidth = Math.max(1, canvas.width / 900);
+    for (const d of dets) {
+      ctx.strokeStyle = "rgba(255,255,255,.62)";
+      ctx.strokeRect(d.x * sx, d.y * sy, d.w * sx, d.h * sy);
+    }
+    const top = dets.slice(0, 6);
+    ctx.font = `${Math.max(10, Math.round(canvas.width / 90))}px "Segoe UI", sans-serif`;
+    ctx.textBaseline = "bottom";
+    for (const d of top) {
+      const label = `${d.diameter_m.toFixed(1)} m`;
+      const x = d.x * sx, y = d.y * sy;
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = "rgba(3,8,15,.78)";
+      ctx.fillRect(x, Math.max(0, y - 15), tw + 8, 15);
+      ctx.fillStyle = "#eaf3ff";
+      ctx.fillText(label, x + 4, Math.max(12, y - 3));
+    }
+
+    if (result.best_cell) {
+      const b = result.best_cell;
+      ctx.save();
+      ctx.setLineDash([7, 5]);
+      ctx.lineWidth = Math.max(2, canvas.width / 420);
+      ctx.strokeStyle = "#ffffff";
+      ctx.strokeRect(b.col * cw + 2, b.row * ch + 2, cw - 4, ch - 4);
+      ctx.restore();
+      ctx.font = `700 ${Math.max(10, Math.round(canvas.width / 85))}px "Segoe UI", sans-serif`;
+      const label = "LANDING TARGET";
+      const tw = ctx.measureText(label).width;
+      const lx = Math.min(canvas.width - tw - 12, b.col * cw + 5);
+      const ly = Math.max(4, b.row * ch - 6);
+      ctx.fillStyle = "rgba(3,8,15,.82)";
+      ctx.fillRect(lx, ly, tw + 10, 18);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(label, lx + 5, ly + 13);
+    }
+  }
+
+  function renderResult(result) {
+    currentResult = result;
+    const z = result.verdict === "SAFE" ? "safe" : result.verdict === "CAUTION" ? "caution" : "unsafe";
+    const v = $("verdict");
+    v.classList.remove("z-safe", "z-caution", "z-unsafe");
+    v.classList.add("z-" + z);
+    $("v-icon").textContent = z === "safe" ? "✓" : z === "caution" ? "!" : "✕";
+    $("v-headline").textContent = result.headline;
+    $("v-confidence").textContent = `Model confidence ${fmtPct(result.confidence)}`;
+    $("recommendation").textContent = result.recommendation;
+
+    const st = result.stats;
+    $("s-safe").textContent = st.safe_cells;
+    $("s-caution").textContent = st.caution_cells;
+    $("s-unsafe").textContent = st.unsafe_cells;
+    $("s-safe-pct").textContent = st.safe_pct + "% of cells";
+    $("s-caution-pct").textContent = st.caution_pct + "% of cells";
+    $("s-unsafe-pct").textContent = st.unsafe_pct + "% of cells";
+
+    const b = result.best_cell;
+    $("v-pct").textContent = b ? fmtPct(b.safe_probability) : "—";
+    const target = $("target");
+    if (b) {
+      target.innerHTML = `<b>Landing target · cell ${b.row + 1}·${b.col + 1}</b><br>
+        Largest connected safe area: <b>${b.component_cells}</b> cell${b.component_cells === 1 ? "" : "s"}
+        (${b.component_area_m2.toLocaleString()} m²). Safe-cell confidence ${fmtPct(b.safe_probability)}.`;
+      target.classList.add("show");
+    } else {
+      target.classList.remove("show");
+    }
+
+    const list = $("det-list");
+    const dets = (result.detections || []).slice(0, 12);
+    if (!dets.length) {
+      list.innerHTML = '<div class="det">No boulders above the display threshold.</div>';
+    } else {
+      list.innerHTML = dets.map((d) =>
+        `<div class="det"><span><b>${d.diameter_m.toFixed(1)} m</b> · ${d.confidence * 100 | 0}% conf</span><span>${d.zone === 2 ? "unsafe" : d.zone === 1 ? "caution" : "safe"}</span></div>`
+      ).join("");
+    }
+
+    const proc = result.processed || {};
+    $("stage-meta").textContent =
+      `${result.grid.cols} × ${result.grid.rows} cells · ${result.cell_size_m} m · ` +
+      `${proc.effective_gsd_m || result.gsd_m} m/px` +
+      (proc.resized ? " (input resized)" : "") +
+      ` · ${result.model.name}`;
+    renderOverlay(result);
+    // Repaint the 3D scene if it is currently shown.
+    if (typeof window.__rebuild3D === "function") window.__rebuild3D();
+  }
+
+
+  async function analyze() {
+    if (!currentFile) { showError("Choose an image first."); return; }
+    if (!apiReady) {
+      showError("The upload API is offline. Start scripts/serve_demo.py and reload this page.");
+      $("notice").classList.add("show");
+      return;
+    }
+    clearError();
+    const gsd = Math.max(0.02, Math.min(20, parseFloat($("gsd").value) || 0.5));
+    $("loading").classList.add("show");
+    analyzeBtn.disabled = true;
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.onerror = () => reject(new Error("Could not read the file."));
+        fr.readAsDataURL(currentFile);
+      });
+      const res = await fetch("/api/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: dataUrl, gsd })
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.detail || `HTTP ${res.status}`);
+      renderResult(json);
+    } catch (e) {
+      showError(String(e.message || e));
+    } finally {
+      $("loading").classList.remove("show");
+      analyzeBtn.disabled = false;
+    }
+  }
+
+  drop.addEventListener("click", () => fileInput.click());
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (e) => {
+    e.preventDefault(); drop.classList.remove("over");
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    setFile(f);
+  });
+  fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
+  analyzeBtn.addEventListener("click", analyze);
+  clearBtn.addEventListener("click", () => {
+    currentFile = null; currentResult = null; fileInput.value = "";
+    $("result-body").classList.remove("show");
+    $("empty").style.display = "flex";
+    $("notice").classList.toggle("show", !apiReady);
+    clearError();
+    resetVerdict();
+  });
+
+  health();
+  // Let the 3D module read the latest result.
+  window.__uploadResult = () => currentResult;
+})();
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+let scene3d, camera3d, renderer3d, controls3d, hazardGroup3d, boulderGroup3d, targetGroup3d;
+let is3dView = false;
+const canvas3dWrap = document.getElementById('canvas-3d-wrap');
+const viewToggle = document.getElementById('view-toggle');
+const viewLabel = document.getElementById('view-label');
+
+window.__is3dView = () => is3dView;
+
+function makeLabelSprite(text, color) {
+  const c = document.createElement('canvas');
+  const w = 256, h = 64;
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.font = 'bold 34px "Segoe UI", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = color || '#ffe1b0';
+  ctx.fillText(text, w / 2, h / 2);
+  const tex = new THREE.CanvasTexture(c);
+  tex.anisotropy = 4;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: tex, transparent: true, depthTest: false}));
+  sprite.scale.set(28, 7, 1);
+  return sprite;
+}
+
+function initThree3D() {
+  if (renderer3d) return;
+  scene3d = new THREE.Scene();
+  scene3d.background = new THREE.Color(0x02040a);
+
+  const wrapRect = canvas3dWrap.getBoundingClientRect();
+  const w = Math.max(320, wrapRect.width || 640);
+  const h = Math.max(240, wrapRect.height || 360);
+  camera3d = new THREE.PerspectiveCamera(45, w / h, 1, 5000);
+  camera3d.position.set(200, 300, 400);
+
+  renderer3d = new THREE.WebGLRenderer({antialias:true, alpha:true});
+  renderer3d.setSize(w, h);
+  renderer3d.setPixelRatio(window.devicePixelRatio || 1);
+  canvas3dWrap.appendChild(renderer3d.domElement);
+
+  controls3d = new OrbitControls(camera3d, renderer3d.domElement);
+  controls3d.enableDamping = true;
+  controls3d.dampingFactor = 0.05;
+  controls3d.maxPolarAngle = Math.PI * 0.49;
+  scene3d.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+  dir.position.set(100, 200, 100);
+  dir.castShadow = true;
+  dir.shadow.camera.left = -400;
+  dir.shadow.camera.right = 400;
+  dir.shadow.camera.top = 400;
+  dir.shadow.camera.bottom = -400;
+  dir.shadow.mapSize.width = 2048;
+  dir.shadow.mapSize.height = 2048;
+  scene3d.add(dir);
+
+  // Wide dark ground plane so the hazard grid sits on something.
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(4000, 4000),
+    new THREE.MeshStandardMaterial({color: 0x05070d, roughness: 1, metalness: 0})
+  );
+  plane.rotation.x = -Math.PI / 2;
+  plane.receiveShadow = true;
+  scene3d.add(plane);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls3d.update();
+    renderer3d.render(scene3d, camera3d);
+  }
+  animate();
+
+  window.addEventListener('resize', onResize3D);
+}
+
+function onResize3D() {
+  if (!renderer3d) return;
+  const rect = canvas3dWrap.getBoundingClientRect();
+  const w = Math.max(320, rect.width || 640);
+  const h = Math.max(240, rect.height || 360);
+  camera3d.aspect = w / h;
+  camera3d.updateProjectionMatrix();
+  renderer3d.setSize(w, h);
+}
+
+// Map a detection box centre (image pixel space) into world coordinates that
+// line up with the hazard columns above.
+function detectionWorld(det, result) {
+  const g = result.grid;
+  const cellSize = result.cell_size_m || 50;
+  const proc = result.processed || {};
+  const imgW = proc.width || (g.cols * cellSize);
+  const imgH = proc.height || (g.rows * cellSize);
+  const worldW = g.cols * cellSize;
+  const worldH = g.rows * cellSize;
+  const px = (det.x + det.w / 2) / imgW;
+  const py = (det.y + det.h / 2) / imgH;
+  return {
+    x: px * worldW - worldW / 2,
+    z: py * worldH - worldH / 2,
+  };
+}
+
+// Displace a UV sphere-free icosahedron with coherent noise so every boulder is
+// an irregular (but deterministic) lump of rock instead of a smooth ball.
+function makeRockGeometry(seed) {
+  const geo = new THREE.IcosahedronGeometry(1, 2);
+  const pos = geo.attributes.position;
+  const v = new THREE.Vector3();
+  const fa = 1.6 + (seed % 5) * 0.33;
+  const fb = 2.5 + (seed % 7) * 0.29;
+  const p1 = seed * 1.7;
+  const p2 = seed * 2.9;
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).normalize();
+    const n = 1
+      + 0.16 * Math.sin(v.x * fa + p1) * Math.cos(v.y * fb + p2)
+      + 0.10 * Math.sin(v.z * fb + p1) * Math.cos(v.x * fa + p2)
+      + 0.05 * Math.cos((v.x + v.y + v.z) * 5.0 + p1);
+    v.multiplyScalar(n);
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+function disposeGroup3D(group) {
+  if (!group) return;
+  group.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) {
+      if (o.material.map) o.material.map.dispose();
+      o.material.dispose();
+    }
+  });
+}
+
+function buildHazard3D() {
+  const result = window.__uploadResult();
+  if(!result || !scene3d) return;
+
+  // Remove previous hazard, boulder and landing-target groups (and free GPU memory).
+  if(hazardGroup3d) { scene3d.remove(hazardGroup3d); disposeGroup3D(hazardGroup3d); }
+  if(boulderGroup3d) { scene3d.remove(boulderGroup3d); disposeGroup3D(boulderGroup3d); }
+  if(targetGroup3d) { scene3d.remove(targetGroup3d); disposeGroup3D(targetGroup3d); }
+  hazardGroup3d = new THREE.Group();
+  boulderGroup3d = new THREE.Group();
+  targetGroup3d = new THREE.Group();
+
+  const g = result.grid;
+  const cellSize = result.cell_size_m || 50;
+  const colors = [0x00ff66, 0xffa500, 0xff2d2d];
+  // Severity is encoded by colour plus a modest plinth height. Keeping the
+  // columns low means boulders perched on them stay visible from the default
+  // camera instead of being hidden behind 45 m towers.
+  const heights = [2, 8, 20];
+  const rows = g.rows, cols = g.cols;
+  const cx = (cols * cellSize) / 2;
+  const cy = (rows * cellSize) / 2;
+
+  // --- Hazard columns ---
+  for(let r=0; r<rows; r++){
+    for(let c=0; c<cols; c++){
+      const z = g.zones[r][c];
+      const h = heights[z] || heights[0];
+      const geo = new THREE.BoxGeometry(cellSize*0.85, h, cellSize*0.85);
+      const mat = new THREE.MeshStandardMaterial({color: colors[z], transparent: true, opacity: 0.72});
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.position.set((c * cellSize) - cx + cellSize/2, h/2, (r * cellSize) - cy + cellSize/2);
+      hazardGroup3d.add(mesh);
+    }
+  }
+  scene3d.add(hazardGroup3d);
+
+  // --- Boulder objects (from detections): irregular 3D rocks ---
+  // The grid spans hundreds of metres, so a real 2 m boulder would be smaller
+  // than one pixel. The models are enlarged for visibility and labelled with
+  // their measured diameter; the legend notes the exaggeration.
+  const dets = (result.detections || []).slice(0, 60);
+  const worldW = cols * cellSize;
+  const worldH = rows * cellSize;
+  let rockCount = 0;
+  dets.forEach((d, idx) => {
+    const p = detectionWorld(d, result);
+    const wx = p.x;
+    const wz = p.z;
+    const diameter = Math.max(0.6, Number(d.diameter_m) || 2);
+    const radius = Math.min(20, Math.max(5, diameter * 2.6));
+
+    // Which hazard cell owns this rock? Park it on that cell's plinth so it can
+    // never be buried inside the hazard plate.
+    const cellCol = Math.max(0, Math.min(cols - 1, Math.floor((wx + worldW / 2) / cellSize)));
+    const cellRow = Math.max(0, Math.min(rows - 1, Math.floor((wz + worldH / 2) / cellSize)));
+    const zone = g.zones[cellRow][cellCol];
+    const colH = heights[zone] || heights[0];
+
+    const geo = makeRockGeometry(idx + 1);
+    const mat = new THREE.MeshStandardMaterial({
+      color: zone === 2 ? 0xd4786c : zone === 1 ? 0xc2986a : 0x9fadc0,
+      roughness: 0.97,
+      metalness: 0.02,
+      flatShading: true,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.scale.set(radius, radius * 0.74, radius * 0.9);
+    mesh.rotation.set(idx * 0.63, idx * 1.37, idx * 0.41);
+    mesh.position.set(wx, colH + radius * 0.55, wz);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData = { kind: "boulder", diameter, zone, radius };
+    boulderGroup3d.add(mesh);
+    rockCount++;
+
+    if (idx < 12) {
+      const label = makeLabelSprite(
+        `${diameter.toFixed(1)} m`,
+        zone === 2 ? "#ff9b9b" : zone === 1 ? "#ffd08a" : "#dbe7f7"
+      );
+      label.position.set(wx, colH + radius * 0.55 + radius * 0.85 + 5, wz);
+      boulderGroup3d.add(label);
+    }
+  });
+  scene3d.add(boulderGroup3d);
+
+  window.__scene3dDebug = () => ({
+    hazardMeshes: hazardGroup3d.children.length,
+    boulderMeshes: boulderGroup3d.children.length,
+    boulderRocks: rockCount,
+    rocks: boulderGroup3d.children.filter((o) => o.isMesh).map((o) => ({
+      d: o.userData.diameter,
+      r: o.userData.radius,
+      p: [Math.round(o.position.x), Math.round(o.position.y), Math.round(o.position.z)],
+    })),
+    rendererSize: [renderer3d.domElement.width, renderer3d.domElement.height],
+    cameraPos: camera3d.position.toArray(),
+    target: controls3d.target.toArray(),
+    cellSize,
+  });
+
+  // --- Safe landing target marker ---
+  if (result.best_cell) {
+    const bx = result.best_cell.col * cellSize - cx + cellSize/2;
+    const bz = result.best_cell.row * cellSize - cy + cellSize/2;
+    const bestZone = (g.zones[result.best_cell.row] || [])[result.best_cell.col] || 0;
+    const baseY = heights[bestZone] || heights[0];
+    const ringGeo = new THREE.RingGeometry(cellSize*0.30, cellSize*0.42, 32);
+    const ringMat = new THREE.MeshBasicMaterial({color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.95});
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(bx, baseY + 1, bz);
+    targetGroup3d.add(ring);
+    const beacon = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.8, 0.8, 30, 8),
+      new THREE.MeshBasicMaterial({color: 0x00ff66, transparent: true, opacity: 0.6})
+    );
+    beacon.position.set(bx, baseY + 15, bz);
+    targetGroup3d.add(beacon);
+    const tag = makeLabelSprite('SAFE LANDING', '#00ff66');
+    tag.scale.set(30, 7.5, 1);
+    tag.position.set(bx, baseY + 32, bz);
+    targetGroup3d.add(tag);
+    scene3d.add(targetGroup3d);
+  }
+
+  // Frame the camera so the whole site (grid plus boulder tops) fits the view.
+  const focus = new THREE.Vector3(0, 30, 0);
+  const siteRadius = Math.hypot(worldW, worldH, 70) / 2;
+  const vFov = THREE.MathUtils.degToRad(camera3d.fov);
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera3d.aspect);
+  const fitDist = (siteRadius * 1.06) / Math.sin(Math.min(vFov, hFov) / 2);
+  const viewDir = new THREE.Vector3(0.58, 0.62, 0.58).normalize();
+  camera3d.position.copy(focus).addScaledVector(viewDir, fitDist);
+  camera3d.lookAt(focus);
+  controls3d.target.copy(focus);
+  controls3d.update();
+}
+
+// Exposed to the analysis IIFE: rebuild the scene when a new result arrives.
+window.__rebuild3D = () => { if (is3dView && scene3d) buildHazard3D(); };
+
+// Debug helper: where each rock lands on screen (used by automated checks).
+window.__rockScreen = () => boulderGroup3d
+  ? boulderGroup3d.children.filter((o) => o.isMesh).map((o) => {
+      const v = o.position.clone().project(camera3d);
+      const edge = o.position.clone().add(new THREE.Vector3(o.userData.radius, 0, 0)).project(camera3d);
+      const W = renderer3d.domElement.width, H = renderer3d.domElement.height;
+      const px = (v.x * 0.5 + 0.5) * W, py = (-v.y * 0.5 + 0.5) * H;
+      const ex = (edge.x * 0.5 + 0.5) * W;
+      const toRock = o.position.clone().sub(camera3d.position);
+      const dist = toRock.length();
+      const ray = new THREE.Raycaster(camera3d.position, toRock.normalize(), 1, Math.max(1, dist - o.userData.radius * 0.8));
+      return {
+        d: o.userData.diameter,
+        r: o.userData.radius,
+        px: Math.round(px), py: Math.round(py),
+        rpx: Math.round(Math.abs(ex - px)),
+        onScreen: v.z < 1 && px > 0 && px < W && py > 0 && py < H,
+        occludedByColumn: ray.intersectObject(hazardGroup3d, true).length > 0,
+      };
+    })
+  : [];
+
+viewToggle.addEventListener("click", () => {
+  const preview = document.getElementById("preview");
+
+  // Measure the 2D preview while it is still in flow, so the 3D box keeps
+  // exactly the same footprint instead of collapsing to zero height.
+  const prevW = preview.clientWidth;
+  const prevH = preview.clientHeight;
+
+  is3dView = !is3dView;
+
+  if (is3dView) {
+    if (prevW > 0 && prevH > 0) {
+      canvas3dWrap.style.aspectRatio = prevW + " / " + prevH;
+    } else if (!canvas3dWrap.style.aspectRatio) {
+      canvas3dWrap.style.aspectRatio = "1 / 1";
+    }
+    // The wrap is in normal flow when shown, so .canvas-wrap keeps its height.
+    canvas3dWrap.style.display = "block";
+    preview.style.display = "none";
+    if (!renderer3d) initThree3D();
+    buildHazard3D();
+    onResize3D();
+    requestAnimationFrame(() => { onResize3D(); });
+  } else {
+    canvas3dWrap.style.display = "none";
+    preview.style.display = "block";
+    document.querySelector(".canvas-wrap").style.height = "";
+  }
+
+  viewLabel.textContent = is3dView ? "2D View" : "3D View";
+});
+</script>
+</body>
+</html>

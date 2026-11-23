@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D Site Model — Lunar Boulder Hazard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230b1220'/%3E%3Ccircle cx='27' cy='26' r='16' fill='%23dbe7f7'/%3E%3Ccircle cx='38' cy='36' r='13' fill='%237dd3fc' opacity='.55'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#04060b;--panel:rgba(9,14,24,.9);--line:rgba(148,163,184,.17);
+    --line-strong:rgba(148,163,184,.3);--text:#e8eef9;--muted:#8c9bb2;--faint:#5d6b80;
+    --safe:#00ff66;--caution:#ffa500;--unsafe:#ff2d2d;--accent:#7dd3fc;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:var(--bg);color:var(--text);font-family:"Segoe UI","Inter",system-ui,-apple-system,sans-serif;
+    font-size:14px;overflow:hidden}
+  button,input{font:inherit;color:inherit}
+  a{color:inherit}
+  #scene{position:fixed;inset:0;display:block;outline:none}
+  .top-left{
+    position:fixed;left:18px;top:18px;z-index:10;max-width:360px;
+    background:linear-gradient(120deg,rgba(6,11,20,.92),rgba(6,11,20,.62));
+    border:1px solid var(--line);border-radius:13px;padding:12px 15px 13px;backdrop-filter:blur(12px);
+    box-shadow:0 18px 50px rgba(0,0,0,.4);
+  }
+  .top-left h1{margin:0;font-size:13px;letter-spacing:.3px}
+  .top-left p{margin:5px 0 0;font-size:10px;color:var(--muted);line-height:1.5;letter-spacing:.2px}
+  .tag{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:4px 8px;border:1px solid rgba(125,211,252,.24);
+    border-radius:999px;background:rgba(125,211,252,.06);font-size:9.5px;color:#bfe6f7;letter-spacing:.4px}
+  .top-right{position:fixed;right:18px;top:18px;z-index:10;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);
+    background:rgba(10,17,29,.82);backdrop-filter:blur(12px);text-decoration:none;font-size:11.5px;font-weight:650;
+    color:#cbd8ea;transition:.16s;cursor:pointer}
+  .pill:hover{border-color:var(--line-strong);background:rgba(22,34,52,.92);color:#fff}
+  .pill.active{border-color:rgba(255,165,0,.42);background:rgba(255,165,0,.12);color:#ffd08a}
+  .controls{
+    position:fixed;left:18px;bottom:18px;z-index:10;width:298px;max-height:calc(100vh - 140px);overflow:auto;
+    background:linear-gradient(160deg,rgba(13,20,33,.94),rgba(7,11,20,.92));
+    border:1px solid var(--line);border-radius:13px;padding:13px;backdrop-filter:blur(14px);
+    box-shadow:0 18px 50px rgba(0,0,0,.45);
+  }
+  .controls h2{margin:0 0 10px;font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:#9fb0c7}
+  .seg{display:flex;gap:6px;margin-bottom:12px}
+  .seg button{flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:rgba(255,255,255,.03);
+    font-size:11px;font-weight:650;color:#b8c7db;cursor:pointer;transition:.15s}
+  .seg button.active{border-color:rgba(125,211,252,.45);background:rgba(125,211,252,.12);color:#dff5ff}
+  .field{margin-bottom:11px}
+  .field .lab{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:#b9c8dd;margin-bottom:5px}
+  .field .lab b{font-variant-numeric:tabular-nums;color:#e5eefb;font-weight:650}
+  input[type=range]{width:100%;height:4px;appearance:none;border-radius:99px;outline:none;
+    background:linear-gradient(90deg,rgba(125,211,252,.75),rgba(255,165,0,.65),rgba(255,45,45,.8));cursor:pointer}
+  input[type=range]::-webkit-slider-thumb{appearance:none;width:13px;height:13px;border-radius:50%;background:#eaf6ff;
+    border:2px solid rgba(4,8,15,.9);box-shadow:0 0 0 1px rgba(125,211,252,.7),0 2px 8px rgba(0,0,0,.6)}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0;font-size:10.5px;color:#b9c8dd}
+  .switch{position:relative;width:34px;height:19px;flex:none}
+  .switch input{display:none}
+  .switch span{position:absolute;inset:0;border-radius:99px;background:rgba(255,255,255,.1);border:1px solid var(--line);
+    transition:.16s;cursor:pointer}
+  .switch span::after{content:"";position:absolute;left:2px;top:2px;width:13px;height:13px;border-radius:50%;
+    background:#8796aa;transition:.16s}
+  .switch input:checked + span{background:rgba(0,255,102,.18);border-color:rgba(0,255,102,.35)}
+  .switch input:checked + span::after{transform:translateX(15px);background:var(--safe);box-shadow:0 0 8px rgba(0,255,102,.5)}
+  .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+  .btn{border:1px solid var(--line);border-radius:8px;padding:8px 6px;background:rgba(255,255,255,.035);
+    font-size:10.5px;font-weight:650;color:#c6d4e7;cursor:pointer;transition:.15s}
+  .btn:hover{background:rgba(255,255,255,.075);border-color:var(--line-strong)}
+  .btn.accent{border-color:rgba(125,211,252,.35);background:rgba(125,211,252,.1);color:#dff5ff}
+  .btn:disabled{opacity:.5;cursor:wait}
+  .stats{
+    position:fixed;right:18px;bottom:18px;z-index:10;width:286px;
+    background:linear-gradient(160deg,rgba(13,20,33,.94),rgba(7,11,20,.92));
+    border:1px solid var(--line);border-radius:13px;padding:13px;backdrop-filter:blur(14px);
+    box-shadow:0 18px 50px rgba(0,0,0,.45);
+  }
+  .stats h2{margin:0 0 10px;font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;color:#9fb0c7}
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .stat{border:1px solid var(--line);border-radius:9px;padding:8px 9px;background:rgba(255,255,255,.025)}
+  .stat span{display:block;font-size:8.5px;letter-spacing:.9px;text-transform:uppercase;color:var(--faint);margin-bottom:3px}
+  .stat b{font-size:19px;line-height:1;font-variant-numeric:tabular-nums}
+  .stat.s b{color:var(--safe)}.stat.c b{color:var(--caution)}.stat.u b{color:var(--unsafe)}
+  .bar{height:6px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;display:flex;margin:10px 0 8px}
+  .bar i{display:block;height:100%}
+  .legend{display:flex;gap:11px;flex-wrap:wrap;font-size:9.5px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .legend i{width:7px;height:7px;border-radius:2px;display:inline-block}
+  .hint{font-size:9.5px;color:var(--faint);line-height:1.5;margin-top:9px}
+  #loading{
+    position:fixed;inset:0;z-index:50;background:rgba(3,6,12,.82);backdrop-filter:blur(8px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;transition:.3s;
+  }
+  #loading.hidden{opacity:0;pointer-events:none}
+  .spinner{width:36px;height:36px;border-radius:50%;border:2px solid rgba(125,211,252,.18);border-top-color:var(--accent);animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loading b{font-size:13px;color:#d5e4f5}
+  #loading span{font-size:10.5px;color:var(--muted)}
+  #tooltip{
+    position:fixed;z-index:30;pointer-events:none;display:none;padding:7px 9px;border-radius:8px;
+    border:1px solid var(--line-strong);background:rgba(5,9,16,.92);backdrop-filter:blur(8px);
+    font-size:10.5px;color:#dbe7f7;line-height:1.45;box-shadow:0 10px 30px rgba(0,0,0,.5);
+  }
+  #tooltip b{color:#fff}
+  #toast{
+    position:fixed;left:50%;bottom:22px;transform:translate(-50%,14px);z-index:40;opacity:0;pointer-events:none;
+    background:rgba(8,13,23,.94);border:1px solid var(--line-strong);border-radius:9px;padding:9px 13px;
+    font-size:10.5px;color:#d5e3f4;transition:.25s;box-shadow:0 14px 40px rgba(0,0,0,.5);max-width:80vw;text-align:center;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  .north{position:fixed;right:20px;bottom:210px;z-index:8;width:48px;height:48px;border-radius:50%;
+    border:1px solid var(--line);background:rgba(8,13,23,.7);backdrop-filter:blur(8px);display:grid;place-items:center;
+    color:#b9c8dd;font-size:10px;font-weight:700;letter-spacing:.5px;pointer-events:none}
+  .north::before{content:"";position:absolute;top:4px;left:50%;transform:translateX(-50%);
+    border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:9px solid #ffd08a}
+  .north span{transform:translateY(5px)}
+  @media (max-width:900px){
+    .stats{display:none}.north{display:none}
+    .controls{width:250px;max-height:46vh}
+    .top-left{max-width:280px}
+  }
+  @media (max-width:600px){
+    .top-left p,.tag{display:none}
+    .top-left{padding:9px 12px}.top-left h1{font-size:12px}
+    .controls{left:10px;bottom:10px;width:220px;max-height:42vh}
+    .top-right{right:10px;top:10px}
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div class="top-left">
+  <h1>Boulder hazard · 3D site model</h1>
+  <p>Apollo 17 — Taurus-Littrow · LROC NAC 0.5 m/px<br>50 m hazard cells · boulders scaled by measured diameter</p>
+  <div class="tag">◈ drag to orbit · scroll to zoom</div>
+</div>
+
+<div class="top-right">
+  <a class="pill" href="index.html?loaded=1">◧ 2D Hazard Map</a>
+  <a class="pill" href="upload.html">⬆ Upload</a>
+  <span class="pill active">◈ 3D Site</span>
+</div>
+
+<div class="controls">
+  <h2>Hazard view</h2>
+  <div class="seg" id="profile">
+    <button type="button" data-profile="lander" class="active">Lander</button>
+    <button type="button" data-profile="rover">Rover</button>
+  </div>
+  <div class="field">
+    <div class="lab"><span>Detection confidence</span><b id="conf-val">0.25</b></div>
+    <input type="range" id="conf" min="0.05" max="0.95" step="0.01" value="0.25">
+  </div>
+  <div class="field">
+    <div class="lab"><span>Vertical exaggeration</span><b id="vscale-val">1.5×</b></div>
+    <input type="range" id="vscale" min="1" max="3" step="0.1" value="1.5">
+  </div>
+  <div class="field">
+    <div class="lab"><span>Boulder size exaggeration</span><b id="bscale-val">3×</b></div>
+    <input type="range" id="bscale" min="1" max="10" step="0.5" value="3">
+  </div>
+  <div class="row"><span>Hazard columns</span><label class="switch"><input type="checkbox" id="hazard-toggle" checked><span></span></label></div>
+  <div class="row"><span>Boulders</span><label class="switch"><input type="checkbox" id="boulder-toggle" checked><span></span></label></div>
+  <div class="row"><span>Auto-rotate</span><label class="switch"><input type="checkbox" id="rotate-toggle"><span></span></label></div>
+  <div class="btn-row">
+    <button type="button" class="btn" id="reset">Reset view</button>
+    <button type="button" class="btn" id="top">Top view</button>
+    <button type="button" class="btn" id="focus">Landing target</button>
+    <button type="button" class="btn accent" id="download">Download .glb</button>
+  </div>
+  <div class="hint">Columns show hazard severity; height is scaled by the largest boulder in each, times the exaggeration. The lunar module marks the largest connected safe area. Surface is the real NAC mosaic; there is no DEM, so the ground is flat. Boulders are drawn at measured diameter × the boulder exaggeration so single rocks stay visible — set it to 1× for true scale.</div>
+</div>
+
+<div class="stats">
+  <h2>Zone coverage <span id="stats-profile" style="color:var(--faint);font-weight:500;letter-spacing:0;text-transform:none">· lander</span></h2>
+  <div class="stat-row">
+    <div class="stat s"><span>Safe</span><b id="st-safe">—</b></div>
+    <div class="stat c"><span>Caution</span><b id="st-caution">—</b></div>
+    <div class="stat u"><span>Unsafe</span><b id="st-unsafe">—</b></div>
+  </div>
+  <div class="bar"><i id="bar-safe" style="background:var(--safe)"></i><i id="bar-caution" style="background:var(--caution)"></i><i id="bar-unsafe" style="background:var(--unsafe)"></i></div>
+  <div class="legend">
+    <span><i style="background:var(--safe)"></i>Safe</span>
+    <span><i style="background:var(--caution)"></i>Caution</span>
+    <span><i style="background:var(--unsafe)"></i>Unsafe</span>
+  </div>
+  <div class="hint" id="active-info">—</div>
+</div>
+
+<div class="north"><span>N</span></div>
+<div id="tooltip"></div>
+<div id="toast"></div>
+
+<div id="loading">
+  <div class="spinner" aria-hidden="true"></div>
+  <b>Building the 3D site…</b>
+  <span>loading NAC mosaic, detections, and hazard grid</span>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
+
+const $ = (id) => document.getElementById(id);
+const COLORS = [0x00ff66, 0xffa500, 0xff2d2d];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const state = {
+  meta: null,
+  geo: null,
+  profile: "lander",
+  conf: 0.25,
+  vscale: 1.5,
+  boulderScale: 3,
+  hazardOn: true,
+  bouldersOn: true,
+  zones: null,
+  cells: null,
+  active: [],
+  lander: null,
+  bestCell: null,
+  hazardGroup: null,
+  boulderGroup: null,
+  targetGroup: null,
+  scene: null,
+  camera: null,
+  controls: null,
+  renderer: null
+};
+
+function toast(msg, ms = 2600) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove("show"), ms);
+}
+
+function cellIndexFor(x, y) {
+  const g = state.meta.grid;
+  const b = g.bounds_m;
+  if (x < b[0] || x >= b[2] || y < b[1] || y >= b[3]) return -1;
+  const col = Math.floor((x - b[0]) / g.cell_size_m);
+  const row = Math.floor((b[3] - y) / g.cell_size_m);
+  if (col < 0 || col >= g.cols || row < 0 || row >= g.rows) return -1;
+  return row * g.cols + col;
+}
+
+function recompute() {
+  const g = state.meta.grid;
+  const th = state.meta.profiles[state.profile].thresholds;
+  const zones = new Uint8Array(g.rows * g.cols);
+  const cells = new Map();
+  const active = [];
+  for (const f of state.geo.features) {
+    const p = f.properties;
+    if (p.confidence < state.conf - 1e-9) continue;
+    active.push(f);
+    const idx = cellIndexFor(f.geometry.coordinates[0], f.geometry.coordinates[1]);
+    if (idx < 0) continue;
+    let c = cells.get(idx);
+    if (!c) { c = { count: 0, maxD: 0 }; cells.set(idx, c); }
+    c.count += 1;
+    if (p.diameter_m > c.maxD) c.maxD = p.diameter_m;
+  }
+  for (const [idx, c] of cells) {
+    const sizeZone = c.maxD >= th.size.unsafe_min_diameter_m ? 2
+      : c.maxD >= th.size.safe_max_diameter_m ? 1 : 0;
+    const densityZone = c.count >= th.density.unsafe_min_count ? 2
+      : c.count > th.density.safe_max_count ? 1 : 0;
+    zones[idx] = Math.max(sizeZone, densityZone);
+  }
+  state.zones = zones;
+  state.cells = cells;
+  state.active = active;
+  state.bestCell = largestSafe(zones, g.rows, g.cols);
+  updateStats();
+}
+
+function largestSafe(zones, rows, cols) {
+  const seen = new Uint8Array(rows * cols);
+  let best = [];
+  for (let i = 0; i < zones.length; i++) {
+    if (zones[i] !== 0 || seen[i]) continue;
+    const stack = [i];
+    seen[i] = 1;
+    const comp = [];
+    while (stack.length) {
+      const cur = stack.pop();
+      comp.push(cur);
+      const r = Math.floor(cur / cols), c = cur % cols;
+      for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+        const ni = nr * cols + nc;
+        if (!seen[ni] && zones[ni] === 0) { seen[ni] = 1; stack.push(ni); }
+      }
+    }
+    if (comp.length > best.length) best = comp;
+  }
+  if (!best.length) {
+    // No safe cell: put the marker on the least-bad cell.
+    let bestIdx = 0, bestScore = Infinity;
+    for (let i = 0; i < zones.length; i++) {
+      const score = zones[i] * 1000 + (state.cells.get(i)?.maxD || 0);
+      if (score < bestScore) { bestScore = score; bestIdx = i; }
+    }
+    return { idx: bestIdx, component: [], area: 0 };
+  }
+  const rowsArr = best.map((i) => Math.floor(i / cols));
+  const colsArr = best.map((i) => i % cols);
+  const cr = rowsArr.reduce((a, b) => a + b, 0) / best.length;
+  const cc = colsArr.reduce((a, b) => a + b, 0) / best.length;
+  let bestIdx = best[0], bestDist = Infinity;
+  for (const i of best) {
+    const d = Math.abs(Math.floor(i / cols) - cr) + Math.abs((i % cols) - cc);
+    if (d < bestDist) { bestDist = d; bestIdx = i; }
+  }
+  return { idx: bestIdx, component: best, area: best.length * state.meta.grid.cell_size_m ** 2 };
+}
+
+function cellCenter(idx) {
+  const g = state.meta.grid, b = g.bounds_m;
+  const row = Math.floor(idx / g.cols), col = idx % g.cols;
+  return {
+    x: b[0] + (col + 0.5) * g.cell_size_m,
+    y: b[3] - (row + 0.5) * g.cell_size_m,
+    row, col
+  };
+}
+
+function updateStats() {
+  const z = state.zones;
+  let s = 0, c = 0, u = 0;
+  for (let i = 0; i < z.length; i++) { if (z[i] === 0) s++; else if (z[i] === 1) c++; else u++; }
+  const total = z.length;
+  $("st-safe").textContent = s.toLocaleString();
+  $("st-caution").textContent = c.toLocaleString();
+  $("st-unsafe").textContent = u.toLocaleString();
+  $("bar-safe").style.width = (100 * s / total) + "%";
+  $("bar-caution").style.width = (100 * c / total) + "%";
+  $("bar-unsafe").style.width = (100 * u / total) + "%";
+  $("stats-profile").textContent = "· " + state.profile;
+  $("active-info").textContent = `${state.active.length.toLocaleString()} boulders above ${state.conf.toFixed(2)} · ${state.bestCell && state.bestCell.component.length ? "landing target found" : "no safe landing cell"}`;
+}
+
+/* ---------------------------------------------------------------- geometry */
+function buildGround() {
+  const b = state.meta.basemap.bounds_m;
+  const g = state.meta.grid.bounds_m;
+  const minx = Math.min(b[0], g[0]), maxx = Math.max(b[2], g[2]);
+  const miny = Math.min(b[1], g[1]), maxy = Math.max(b[3], g[3]);
+  const w = maxx - minx, h = maxy - miny;
+  const cx = (minx + maxx) / 2, cy = (miny + maxy) / 2;
+
+  const base = new THREE.Mesh(
+    new THREE.PlaneGeometry(w, h),
+    new THREE.MeshStandardMaterial({ color: 0x111722, roughness: 1, metalness: 0 })
+  );
+  base.rotation.x = -Math.PI / 2;
+  base.position.set(cx, -0.35, -cy);
+  state.scene.add(base);
+
+  const tex = new THREE.TextureLoader().load("data/mosaic.jpg", () => {
+    tex.anisotropy = state.renderer.capabilities.getMaxAnisotropy();
+    tex.colorSpace = THREE.SRGBColorSpace;
+  });
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const bw = b[2] - b[0], bh = b[3] - b[1];
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(bw, bh),
+    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.98, metalness: 0.01 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set((b[0] + b[2]) / 2, 0, -(b[1] + b[3]) / 2);
+  ground.name = "NAC_Surface";
+  state.scene.add(ground);
+
+  // Subtle site border.
+  const border = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(bw, 0.02, bh)),
+    new THREE.LineBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.22 })
+  );
+  border.position.set((b[0] + b[2]) / 2, 0.02, -(b[1] + b[3]) / 2);
+  state.scene.add(border);
+}
+
+// Absolute ceiling (metres) so very high vertical-exaggeration settings can
+// never bury the lander or block the target view.
+const MAX_HAZARD_H = 40;
+
+function hazardHeight(zone, maxD) {
+  // Severity drives the height (scaled by vertical exaggeration); max boulder
+  // size adds fine detail.  Kept translucent so the lander stays visible.
+  const d = Math.min(maxD, 8);
+  if (zone === 2) return 14 + d * 1.0;
+  if (zone === 1) return 6 + d * 0.6;
+  return 0.35;
+}
+
+function buildHazard() {
+  if (state.hazardGroup) {
+    state.scene.remove(state.hazardGroup);
+    const seenGeo = new Set(), seenMat = new Set();
+    state.hazardGroup.traverse((o) => {
+      if (o.isMesh) {
+        if (!seenGeo.has(o.geometry)) { seenGeo.add(o.geometry); o.geometry.dispose(); }
+        if (!seenMat.has(o.material)) { seenMat.add(o.material); o.material.dispose(); }
+      }
+    });
+    state.hazardGroup = null;
+  }
+  const g = state.meta.grid;
+  const group = new THREE.Group();
+  group.name = "HazardCells";
+  const box = new THREE.BoxGeometry(1, 1, 1);
+  const mats = COLORS.map((c, i) => new THREE.MeshBasicMaterial({
+    color: c, transparent: true, opacity: i === 0 ? 0.1 : i === 1 ? 0.27 : 0.36,
+    depthWrite: false
+  }));
+  for (let idx = 0; idx < state.zones.length; idx++) {
+    const z = state.zones[idx];
+    const cell = state.cells.get(idx);
+    const h = Math.min(hazardHeight(z, cell ? cell.maxD : 0) * state.vscale, MAX_HAZARD_H);
+    const center = cellCenter(idx);
+    const mesh = new THREE.Mesh(box, mats[z]);
+    mesh.scale.set(g.cell_size_m - 2.2, h, g.cell_size_m - 2.2);
+    mesh.position.set(center.x, h / 2 + 0.04, -center.y);
+    mesh.userData = { kind: "hazard", zone: z, count: cell ? cell.count : 0, maxD: cell ? cell.maxD : 0, idx, baseH: hazardHeight(z, cell ? cell.maxD : 0) };
+    group.add(mesh);
+  }
+  group.visible = state.hazardOn;
+  state.hazardGroup = group;
+  state.scene.add(group);
+}
+
+function rockMaterial(conf) {
+  const c = conf >= 0.7 ? 0xd9c2a4 : conf >= 0.5 ? 0x9aa6b4 : 0x6d7a8c;
+  return new THREE.MeshStandardMaterial({ color: c, roughness: 0.96, metalness: 0.03, flatShading: true });
+}
+
+function buildBoulders() {
+  if (state.boulderGroup) {
+    state.scene.remove(state.boulderGroup);
+    state.boulderGroup.traverse((o) => { if (o.isMesh) o.material.dispose(); });
+    state.boulderGroup = null;
+  }
+  const group = new THREE.Group();
+  group.name = "Boulders";
+  const geos = [
+    new THREE.DodecahedronGeometry(0.5, 0),
+    new THREE.IcosahedronGeometry(0.5, 1),
+    new THREE.OctahedronGeometry(0.55, 1)
+  ];
+  const mats = [rockMaterial(0.3), rockMaterial(0.55), rockMaterial(0.8)];
+  for (const f of state.active) {
+    const p = f.properties;
+    const x = f.geometry.coordinates[0], y = f.geometry.coordinates[1];
+    const d = Math.max(0.8, p.diameter_m) * state.boulderScale;
+    const gi = Math.abs(Math.round((x * 7 + y * 11) % 3)) % 3;
+    const mesh = new THREE.Mesh(geos[gi], mats[p.confidence >= 0.7 ? 2 : p.confidence >= 0.5 ? 1 : 0]);
+    const s = d;
+    mesh.scale.set(s, s * 0.72, s * 0.92);
+    mesh.rotation.set((x % 1) * 2.1, (y % 1) * 3.1, (x * 0.02) % 1.2);
+    mesh.position.set(x, s * 0.32, -y);
+    mesh.userData = { kind: "boulder", diameter: p.diameter_m, confidence: p.confidence, tile: p.tile, zone: p.hazard_zone };
+    group.add(mesh);
+  }
+  group.visible = state.bouldersOn;
+  state.boulderGroup = group;
+  state.scene.add(group);
+}
+
+function buildTarget() {
+  if (state.targetGroup) {
+    state.scene.remove(state.targetGroup);
+    const seenGeo = new Set(), seenMat = new Set();
+    state.targetGroup.traverse((o) => {
+      if (o.isMesh) {
+        if (!seenGeo.has(o.geometry)) { seenGeo.add(o.geometry); o.geometry.dispose(); }
+        if (!seenMat.has(o.material)) { seenMat.add(o.material); o.material.dispose(); }
+      }
+    });
+    state.targetGroup = null;
+  }
+  if (!state.bestCell) return;
+  const c = cellCenter(state.bestCell.idx);
+  const group = new THREE.Group();
+  group.name = "LandingTarget";
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(9, 10.5, 64),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(c.x, 0.15, -c.y);
+  group.add(ring);
+
+  const beacon = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.5, 0.5, 44, 8, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false })
+  );
+  beacon.position.set(c.x, 22, -c.y);
+  group.add(beacon);
+
+  const lander = makeLander();
+  lander.position.set(c.x, 0.1, -c.y);
+  lander.rotation.y = Math.PI * 0.18;
+  group.add(lander);
+  state.lander = lander;
+  state.targetGroup = group;
+  state.scene.add(group);
+  return { x: c.x, z: -c.y };
+}
+
+function makeLander() {
+  const g = new THREE.Group();
+  g.name = "LunarModule";
+  const gold = new THREE.MeshStandardMaterial({ color: 0xd8b46a, roughness: 0.55, metalness: 0.45 });
+  const silver = new THREE.MeshStandardMaterial({ color: 0xc9d2dc, roughness: 0.35, metalness: 0.6 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2b3442, roughness: 0.7, metalness: 0.3 });
+
+  const descent = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.6, 3.6, 8), gold);
+  descent.position.y = 2.4; g.add(descent);
+  const ascent = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 3.2, 2.8, 8), silver);
+  ascent.position.y = 5.6; g.add(ascent);
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2.3, 1.0, 8), silver);
+  top.position.y = 7.4; g.add(top);
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 0.8, 1.3, 8), dark);
+  nozzle.position.y = 0.1; g.add(nozzle);
+
+  for (let i = 0; i < 4; i++) {
+    const a = (Math.PI / 2) * i + Math.PI / 4;
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.34, 6.2, 6), silver);
+    leg.position.set(Math.cos(a) * 3.1, 1.25, Math.sin(a) * 3.1);
+    leg.rotation.z = Math.PI / 2 - 0.48;
+    leg.rotation.y = -a + Math.PI / 2;
+    g.add(leg);
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 0.38, 12), dark);
+    foot.position.set(Math.cos(a) * 5.6, 0.2, Math.sin(a) * 5.6);
+    g.add(foot);
+  }
+  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4.2, 5), silver);
+  antenna.position.set(1.2, 9.2, 0.8); antenna.rotation.z = -0.2; g.add(antenna);
+  const dish = new THREE.Mesh(new THREE.SphereGeometry(1.4, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), silver);
+  dish.position.set(1.6, 11.2, 0.8); dish.rotation.x = -0.6; g.add(dish);
+  // Deliberately oversized so the lander is visible at site scale.
+  g.scale.setScalar(2.2);
+  return g;
+}
+
+/* ------------------------------------------------------------------ scene */
+function setHomeView() {
+  const c = state.center;
+  state.camera.position.set(c.x + 980, 800, c.z + 1240);
+  state.controls.target.copy(c);
+  state.controls.update();
+}
+
+function init() {
+  const canvas = $("scene");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
+  state.renderer = renderer;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x03060c);
+  scene.fog = new THREE.FogExp2(0x03060c, 0.00022);
+  state.scene = scene;
+
+  const camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 1, 12000);
+  state.camera = camera;
+
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.minDistance = 60;
+  controls.maxDistance = 4200;
+  controls.maxPolarAngle = Math.PI * 0.485;
+  controls.autoRotateSpeed = 0.55;
+  state.controls = controls;
+
+  scene.add(new THREE.HemisphereLight(0x9db8de, 0x1a1712, 1.0));
+  const sun = new THREE.DirectionalLight(0xfff1da, 2.0);
+  sun.position.set(-500, 900, 500);
+  scene.add(sun);
+  const rim = new THREE.DirectionalLight(0x6ea8ff, 0.5);
+  rim.position.set(700, 350, -600);
+  scene.add(rim);
+
+  // Stars.
+  const starGeo = new THREE.BufferGeometry();
+  const starPos = [];
+  for (let i = 0; i < 1800; i++) {
+    const r = 5200 + Math.random() * 2400;
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.acos(2 * Math.random() - 1);
+    starPos.push(r * Math.sin(ph) * Math.cos(th), Math.abs(r * Math.cos(ph)) * 0.7 + 300, r * Math.sin(ph) * Math.sin(th));
+  }
+  starGeo.setAttribute("position", new THREE.Float32BufferAttribute(starPos, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
+    color: 0xbfd6f5, size: 2.4, sizeAttenuation: false,
+    transparent: true, opacity: 0.9, fog: false
+  })));
+
+  const g = state.meta.grid;
+  const b = state.meta.basemap.bounds_m;
+  const minx = Math.min(b[0], g.bounds_m[0]), maxx = Math.max(b[2], g.bounds_m[2]);
+  const miny = Math.min(b[1], g.bounds_m[1]), maxy = Math.max(b[3], g.bounds_m[3]);
+  const center = new THREE.Vector3((minx + maxx) / 2, 0, -(miny + maxy) / 2);
+  state.center = center;
+
+  setHomeView();
+
+  buildGround();
+  recompute();
+  buildHazard();
+  buildBoulders();
+  const targetPos = buildTarget();
+  state.targetPos = targetPos;
+
+  animate();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (state.controls) state.controls.update();
+  if (state.targetGroup) {
+    const ring = state.targetGroup.children[0];
+    if (ring) {
+      const t = performance.now() * 0.001;
+      ring.material.opacity = 0.45 + 0.35 * (0.5 + 0.5 * Math.sin(t * 2.2));
+      ring.scale.setScalar(1 + 0.04 * Math.sin(t * 2.2));
+    }
+  }
+  if (state.renderer && state.scene && state.camera) state.renderer.render(state.scene, state.camera);
+}
+
+/* ------------------------------------------------------------------- UI */
+function refreshHazard() {
+  recompute();
+  buildHazard();
+  buildBoulders();
+  state.targetPos = buildTarget();
+  if (state.boulderGroup) {
+    state.boulderGroup.visible = state.bouldersOn;
+  }
+}
+
+function applyVerticalScale() {
+  if (!state.hazardGroup) return;
+  for (const mesh of state.hazardGroup.children) {
+    const baseH = mesh.userData.baseH;
+    const h = Math.min(baseH * state.vscale, MAX_HAZARD_H);
+    mesh.scale.y = h;
+    mesh.position.y = h / 2 + 0.04;
+  }
+}
+
+function focusDirection() {
+  // Choose the diagonal with the least hazard mass in front of the target, so a
+  // tall neighbouring column does not hide the lander.
+  const g = state.meta.grid;
+  const br = Math.floor(state.bestCell.idx / g.cols);
+  const bc = state.bestCell.idx % g.cols;
+  const dirs = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+  const weights = [1.5, 1, 0.6];
+  let best = dirs[0], bestScore = Infinity;
+  for (const [dr, dc] of dirs) {
+    let score = 0;
+    for (let k = 1; k <= 3; k++) {
+      const r = br + dr * k, c = bc + dc * k;
+      if (r < 0 || c < 0 || r >= g.rows || c >= g.cols) {
+        score += 8;
+        continue;
+      }
+      const idx = r * g.cols + c;
+      const cell = state.cells.get(idx);
+      const h = Math.min(
+        hazardHeight(state.zones[idx], cell ? cell.maxD : 0) * state.vscale,
+        MAX_HAZARD_H
+      );
+      score += h * weights[k - 1];
+    }
+    if (score < bestScore) { bestScore = score; best = [dr, dc]; }
+  }
+  return best;
+}
+
+function bindUI() {
+  document.querySelectorAll("#profile button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (state.profile === btn.dataset.profile) return;
+      state.profile = btn.dataset.profile;
+      document.querySelectorAll("#profile button").forEach((b) => b.classList.toggle("active", b === btn));
+      refreshHazard();
+      toast(`${state.meta.profiles[state.profile].label} thresholds applied`);
+    });
+  });
+  $("conf").addEventListener("input", (e) => {
+    state.conf = clamp(parseFloat(e.target.value), 0.05, 0.95);
+    $("conf-val").textContent = state.conf.toFixed(2);
+    refreshHazard();
+  });
+  $("vscale").addEventListener("input", (e) => {
+    state.vscale = clamp(parseFloat(e.target.value), 1, 3);
+    $("vscale-val").textContent = state.vscale.toFixed(1) + "×";
+    applyVerticalScale();
+  });
+  $("bscale").addEventListener("input", (e) => {
+    state.boulderScale = clamp(parseFloat(e.target.value), 1, 10);
+    $("bscale-val").textContent = state.boulderScale.toFixed(1) + "×";
+    buildBoulders();
+  });
+  $("hazard-toggle").addEventListener("change", (e) => {
+    state.hazardOn = e.target.checked;
+    if (state.hazardGroup) state.hazardGroup.visible = state.hazardOn;
+  });
+  $("boulder-toggle").addEventListener("change", (e) => {
+    state.bouldersOn = e.target.checked;
+    if (state.boulderGroup) state.boulderGroup.visible = state.bouldersOn;
+  });
+  $("rotate-toggle").addEventListener("change", (e) => {
+    state.controls.autoRotate = e.target.checked;
+  });
+  $("reset").addEventListener("click", setHomeView);
+  $("top").addEventListener("click", () => {
+    state.camera.position.set(state.center.x, 1700, state.center.z + 1);
+    state.controls.target.copy(state.center);
+    state.controls.update();
+  });
+  $("focus").addEventListener("click", () => {
+    if (!state.targetPos) return;
+    // Pull back and rise with vertical exaggeration; aim along the clearest
+    // diagonal so a tall neighbouring column does not hide the lander.
+    const [dr, dc] = focusDirection();
+    const k = 0.75 + 0.35 * state.vscale;
+    state.controls.target.set(state.targetPos.x, 8, state.targetPos.z);
+    state.camera.position.set(
+      state.targetPos.x + dc * 95 * k,
+      60 + 45 * state.vscale,
+      state.targetPos.z + dr * 115 * k
+    );
+    state.controls.update();
+    toast("Focused on the landing target");
+  });
+  $("download").addEventListener("click", downloadGlb);
+
+  // Hover a boulder.
+  const ray = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  const canvas = state.renderer.domElement;
+  canvas.addEventListener("pointermove", (e) => {
+    if (!state.boulderGroup || !state.bouldersOn) { $("tooltip").style.display = "none"; return; }
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    ray.setFromCamera(mouse, state.camera);
+    const hits = ray.intersectObjects(state.boulderGroup.children, false);
+    const tip = $("tooltip");
+    if (hits.length) {
+      const d = hits[0].object.userData;
+      tip.innerHTML = `<b>Boulder ${d.diameter.toFixed(2)} m</b><br>confidence ${(d.confidence * 100).toFixed(0)}% · ${d.tile || ""}`;
+      tip.style.display = "block";
+      tip.style.left = (e.clientX + 14) + "px";
+      tip.style.top = (e.clientY + 14) + "px";
+    } else {
+      tip.style.display = "none";
+    }
+  });
+  canvas.addEventListener("pointerleave", () => { $("tooltip").style.display = "none"; });
+
+  window.addEventListener("resize", () => {
+    state.camera.aspect = window.innerWidth / window.innerHeight;
+    state.camera.updateProjectionMatrix();
+    state.renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+}
+
+let _glbUrl = null;
+window.addEventListener("pagehide", () => {
+  if (_glbUrl) { URL.revokeObjectURL(_glbUrl); _glbUrl = null; }
+});
+
+async function downloadGlb() {
+  const btn = $("download");
+  btn.disabled = true;
+  btn.textContent = "Building…";
+  try {
+    const exportGroup = new THREE.Group();
+    exportGroup.name = "Apollo17_BoulderHazard";
+    for (const obj of state.scene.children) {
+      if (obj.name === "NAC_Surface" || obj.name === "HazardCells" || obj.name === "Boulders" || obj.name === "LandingTarget") {
+        exportGroup.add(obj.clone(true));
+      }
+    }
+    const light = new THREE.HemisphereLight(0xffffff, 0x333333, 1.4);
+    exportGroup.add(light);
+    const dir = new THREE.DirectionalLight(0xffffff, 1.8);
+    dir.position.set(-500, 900, 500);
+    exportGroup.add(dir);
+    const exporter = new GLTFExporter();
+    const glb = await new Promise((resolve, reject) => {
+      exporter.parse(exportGroup, resolve, reject, { binary: true, onlyVisible: true });
+    });
+    if (_glbUrl) URL.revokeObjectURL(_glbUrl);
+    const blob = new Blob([glb], { type: "model/gltf-binary" });
+    _glbUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = _glbUrl;
+    a.download = "apollo17_boulder_hazard.glb";
+    a.click();
+    toast("Downloaded apollo17_boulder_hazard.glb");
+  } catch (e) {
+    console.error(e);
+    toast("GLB export failed: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Download .glb";
+  }
+}
+
+async function load() {
+  try {
+    const [meta, geo] = await Promise.all([
+      fetch("data/hazard_meta.json", { cache: "no-store" }).then((r) => r.json()),
+      fetch("data/detections.geojson", { cache: "no-store" }).then((r) => r.json())
+    ]);
+    state.meta = meta;
+    state.geo = geo;
+    init();
+    bindUI();
+    $("loading").classList.add("hidden");
+    window.__lunar3d = state;
+  } catch (e) {
+    console.error(e);
+    $("loading").innerHTML = `<b style="color:#ff9b9b">Could not load the 3D site</b><span>${e.message}</span><span>Serve the viewer over HTTP, not file://</span>`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>

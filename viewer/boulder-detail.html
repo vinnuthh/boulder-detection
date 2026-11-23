@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boulder Detail — Lunar Boulder Hazard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23050810'/%3E%3Ccircle cx='28' cy='24' r='14' fill='%238b9dc3'/%3E%3Ccircle cx='38' cy='36' r='10' fill='%234a5a7a' opacity='.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.js",
+    "three/addons/controls/OrbitControls.js": "./vendor/three/addons/controls/OrbitControls.js"
+  }
+}
+</script>
+<style>
+:root{
+  --bg:#03050a;
+  --bg-elev:#080c14;
+  --panel:rgba(10,14,24,.92);
+  --panel-strong:rgba(14,18,28,.96);
+  --line:rgba(120,140,170,.18);
+  --line-strong:rgba(120,140,170,.35);
+  --text:#dce4f0;
+  --muted:#7a8a9e;
+  --faint:#5a6a7e;
+  --accent:#6cc8ff;
+  --accent-dim:#3a5a7a;
+  --accent-glow:rgba(108,200,255,.4);
+  --warn:#ffb84d;
+  --danger:#ff5a7a;
+  --safe:#33e07a;
+  --radius:14px;
+  --shadow:0 24px 60px rgba(0,0,0,.55);
+  --glow:0 0 40px rgba(108,200,255,.15);
+  --focus-ring:0 0 0 3px rgba(108,200,255,.3);
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#f0f4fa;
+    --bg-elev:#ffffff;
+    --panel:rgba(255,255,255,.94);
+    --panel-strong:rgba(255,255,255,.98);
+    --line:rgba(30,50,80,.12);
+    --line-strong:rgba(30,50,80,.22);
+    --text:#1a2a3a;
+    --muted:#5a6a7e;
+    --faint:#7a8a9e;
+    --accent:#2a6ac8;
+    --accent-dim:#6a8ac8;
+    --accent-glow:rgba(42,106,200,.4);
+    --warn:#c88a00;
+    --danger:#c83a4a;
+    --safe:#1a8a3a;
+    --shadow:0 24px 60px rgba(10,20,40,.18);
+    --glow:0 0 40px rgba(42,106,200,.12);
+    --focus-ring:0 0 0 3px rgba(42,106,200,.3);
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI","Inter",system-ui,-apple-system,sans-serif;font-size:14px;overflow:hidden}
+#app{display:grid;grid-template-columns:400px 1fr;grid-template-rows:1fr;min-height:100vh}
+
+#app::before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:
+    radial-gradient(1px 1px at 8% 12%,rgba(255,255,255,.7),transparent 80%),
+    radial-gradient(1.5px 1.5px at 22% 38%,rgba(255,255,255,.5),transparent 80%),
+    radial-gradient(1px 1px at 45% 8%,rgba(255,255,255,.6),transparent 80%),
+    radial-gradient(2px 2px at 67% 22%,rgba(255,255,255,.4),transparent 80%),
+    radial-gradient(1px 1px at 88% 15%,rgba(255,255,255,.55),transparent 80%),
+    radial-gradient(1.5px 1.5px at 12% 65%,rgba(255,255,255,.45),transparent 80%),
+    radial-gradient(1px 1px at 35% 78%,rgba(255,255,255,.5),transparent 80%),
+    radial-gradient(1px 1px at 78% 62%,rgba(255,255,255,.35),transparent 80%),
+    radial-gradient(2px 2px at 92% 88%,rgba(255,255,255,.4),transparent 80%),
+    radial-gradient(1px 1px at 5% 42%,rgba(255,255,255,.3),transparent 80%),
+    radial-gradient(1.5px 1.5px at 55% 5%,rgba(255,255,255,.6),transparent 80%),
+    radial-gradient(1px 1px at 62% 92%,rgba(255,255,255,.4),transparent 80%);
+  animation:stars 120s linear infinite;
+}
+@keyframes stars{to{transform:translate(200px,100px)}}
+
+#sidebar{
+  padding:24px 20px 20px;overflow-y:auto;
+  background:linear-gradient(180deg,rgba(6,10,18,.98),rgba(3,6,12,.98));
+  border-right:1px solid var(--line);
+  box-shadow:inset -1px 0 0 var(--line),var(--shadow);
+  display:flex;flex-direction:column;gap:16px;
+  height:100%; min-height:100vh; /* scrollable container */
+}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:44px;height:44px;border-radius:12px;flex:0 0 44px;display:grid;place-items:center;font-size:22px;
+  background:radial-gradient(circle at 35% 28%,#e8f0f8 0 18%,#a8b8d0 19% 34%,#4a5a7a 35% 60%,#080c14 61%);
+  box-shadow:0 0 0 1px rgba(255,255,255,.1),0 8px 22px rgba(108,200,255,.12);
+  color:transparent;position:relative;overflow:hidden}
+.logo::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 70% 75%,transparent 0 25%,rgba(4,6,10,.5) 26% 100%)}
+.brand h1{font-size:16px;line-height:1.2;margin:0;letter-spacing:.2px}
+.brand p{margin:3px 0 0;font-size:10px;color:var(--muted);letter-spacing:.7px;text-transform:uppercase}
+
+.panel{
+  border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;background:rgba(8,12,20,.7);
+  backdrop-filter:blur(8px);
+  overflow-y:auto;
+  max-height:75vh;
+}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.section-head span:first-child{font-size:10px;font-weight:750;letter-spacing:1.1px;color:var(--muted);text-transform:uppercase}
+.section-head .value{font-size:13px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.hint{margin:8px 0 0;font-size:11px;line-height:1.5;color:var(--faint)}
+
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:12px 10px;background:rgba(255,255,255,.02);text-align:center;transition:transform .15s,box-shadow .15s}
+.stat:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.stat .n{display:block;font-size:22px;font-weight:750;line-height:1;font-variant-numeric:tabular-nums}
+.stat .l{display:block;font-size:9px;letter-spacing:.8px;color:var(--muted);text-transform:uppercase;margin-top:5px}
+.stat.dia .n{color:var(--accent);text-shadow:0 0 12px var(--accent-glow)}
+.stat.conf .n{color:var(--warn)}
+.stat.gsd .n{color:var(--safe)}
+.stat.tile .n{color:var(--muted)}
+
+.badge-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;font-size:10px;font-weight:650;letter-spacing:.2px;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);color:#c8d4e6}
+.badge .dot{width:6px;height:6px;border-radius:50%}
+.badge.warn .dot{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+.badge.danger .dot{background:var(--danger);box-shadow:0 0 8px var(--danger)}
+.badge.safe .dot{background:var(--safe);box-shadow:0 0 8px var(--safe)}
+.badge.info{border-color:rgba(108,200,255,.3);color:#b8e0ff;background:rgba(108,200,255,.08)}
+
+.coord-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;font-size:11px}
+.coord-grid dt{color:var(--faint);font-size:9px;text-transform:uppercase;letter-spacing:.6px}
+.coord-grid dd{margin:0;color:var(--text);font-variant-numeric:tabular-nums}
+
+.visual-card{position:relative;min-height:280px;border-radius:12px;overflow:hidden;
+  border:1px solid var(--line);background:radial-gradient(ellipse at 50% 30%,rgba(108,200,255,.06),transparent 60%),rgba(6,10,18,.85)}
+.visual-card canvas{display:block;width:100%;height:100%}
+.visual-overlay{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:14px}
+.visual-title{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);opacity:.8}
+.visual-scale{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--faint);align-self:flex-end}
+.visual-scale .bar{height:2px;background:linear-gradient(90deg,var(--accent),transparent);width:100px;border-radius:1px}
+.visual-scale .label{white-space:nowrap}
+
+.back-link{display:inline-flex;align-items:center;gap:8px;margin-top:auto;padding:10px 14px;
+  border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);color:var(--muted);
+  font-size:11.5px;font-weight:600;text-decoration:none;transition:.18s}
+.back-link:hover{color:var(--text);background:rgba(108,200,255,.08);border-color:rgba(108,200,255,.3)}
+.back-link svg{width:16px;height:16px}
+
+#main{
+  position:relative;background:
+    radial-gradient(ellipse at 40% 30%,rgba(108,200,255,.04),transparent 55%),
+    radial-gradient(ellipse at 80% 80%,rgba(255,184,77,.03),transparent 50%),
+    var(--bg);
+}
+#canvas-wrap{position:absolute;inset:0}
+#detail-canvas{width:100%;height:100%;display:block}
+#canvas-3d-wrap{position:absolute;inset:0}
+
+.hud{
+  position:absolute;top:20px;right:20px;z-index:10;
+  display:flex;flex-direction:column;gap:10px;align-items:flex-end;
+}
+.hud-card{
+  min-width:240px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+  background:linear-gradient(135deg,rgba(10,14,24,.94),rgba(6,10,18,.9));
+  backdrop-filter:blur(10px);box-shadow:var(--shadow),var(--glow);
+  animation:slideIn .4s ease-out backwards;
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+.hud-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:6px 0;font-size:12px}
+.hud-row dt{color:var(--muted);font-size:9.5px;letter-spacing:.7px;text-transform:uppercase}
+.hud-row dd{margin:0;color:var(--text);font-weight:650;font-variant-numeric:tabular-nums;text-align:right}
+.hud-row .unit{color:var(--faint);font-weight:400;font-size:10.5px;margin-left:4px}
+.hud-divider{height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);margin:4px 0}
+.hud-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.3px}
+.hud-badge.safe{background:rgba(51,224,122,.12);color:var(--safe);border:1px solid rgba(51,224,122,.3)}
+.hud-badge.caution{background:rgba(255,184,77,.12);color:var(--warn);border:1px solid rgba(255,184,77,.3)}
+.hud-badge.unsafe{background:rgba(255,90,122,.12);color:var(--danger);border:1px solid rgba(255,90,122,.3)}
+
+.measurement-overlay{
+  position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:24px;padding:12px 20px;
+  border:1px solid var(--line);border-radius:12px;
+  background:linear-gradient(135deg,rgba(8,12,20,.96),rgba(4,6,10,.92));
+  backdrop-filter:blur(12px);box-shadow:var(--shadow),var(--glow);
+  animation:fadeUp .5s ease-out backwards;
+}
+@keyframes fadeUp{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+.measure-item{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:110px}
+.measure-item .val{font-size:30px;font-weight:750;letter-spacing:-.5px;line-height:1;font-variant-numeric:tabular-nums}
+.measure-item.dia .val{color:var(--accent);text-shadow:0 0 18px var(--accent-glow)}
+.measure-item.conf .val{color:var(--warn)}
+.measure-item .lab{font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--faint)}
+
+.loading,#error{
+  position:absolute;inset:0;z-index:20;display:grid;place-items:center;
+  background:rgba(4,6,10,.9);backdrop-filter:blur(6px)
+}
+.loading[hidden],#error[hidden]{display:none}
+.loader-card{text-align:center;max-width:360px;padding:28px}
+.spinner{width:56px;height:56px;border-radius:50%;margin:0 auto 18px;
+  border:3px solid rgba(120,140,170,.15);border-top-color:var(--accent);border-right-color:var(--warn);
+  animation:spin 1.2s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-card h3{margin:0 0 8px;font-size:16px;letter-spacing:.2px}
+.loader-card p{margin:0;color:var(--muted);font-size:12px;line-height:1.6}
+
+.toast{
+  position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);z-index:100;
+  background:rgba(8,12,20,.96);border:1px solid var(--line);border-radius:10px;padding:10px 16px;
+  font-size:11.5px;color:#c8d4e6;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:1100px){
+  #app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  #sidebar{order:2;border-right:0;border-top:1px solid var(--line);max-height:48vh;padding:16px}
+  #main{order:1}
+  .measurement-overlay{gap:16px;padding:10px 16px}
+  .measure-item .val{font-size:24px}
+  .measure-item{min-width:85px}
+}
+@media (max-width:640px){
+  .hud{top:12px;right:12px;left:12px;align-items:stretch}
+  .hud-card{min-width:0}
+  .measurement-overlay{left:12px;right:12px;transform:none;justify-content:space-around}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">☾</div>
+      <div>
+        <h1>Boulder Detail</h1>
+        <p>Apollo 17 · LROC NAC 0.5 m/px</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-head"><span>Identification</span><span class="value" id="boulder-id">—</span></div>
+      <div class="stat-grid">
+        <div class="stat dia"><span class="n" id="stat-dia">—</span><span class="l">Diameter</span></div>
+        <div class="stat conf"><span class="n" id="stat-conf">—</span><span class="l">Confidence</span></div>
+        <div class="stat gsd"><span class="n" id="stat-gsd">—</span><span class="l">GSD</span></div>
+        <div class="stat tile"><span class="n" id="stat-tile">—</span><span class="l">Tile</span></div>
+      </div>
+      <div class="badge-row">
+        <span class="badge" id="badge-zone"><span class="dot"></span><span>Zone: —</span></span>
+        <span class="badge info"><span class="dot"></span><span>Detector: Classical CV</span></span>
+      </div>
+      <div class="hint" id="zone-hint">—</div>
+    </div>
+
+    <div class="panel">
+      <div class="section-head"><span>Location (Local Tangent Plane)</span></div>
+      <dl class="coord-grid">
+        <dt>Easting (X)</dt><dd id="loc-x">— m</dd>
+        <dt>Northing (Y)</dt><dd id="loc-y">— m</dd>
+        <dt>Latitude</dt><dd id="loc-lat">—</dd>
+        <dt>Longitude</dt><dd id="loc-lon">—</dd>
+      </dl>
+      <div class="hint" style="margin-top:10px">Azimuthal Equidistant projection · Apollo 17 center (20.1709° N, 30.6683° E) · metres</div>
+    </div>
+
+    <div class="panel">
+      <div class="section-head"><span>Bounding Box (metres)</span></div>
+      <dl class="coord-grid">
+        <dt>West</dt><dd id="bb-w">— m</dd>
+        <dt>East</dt><dd id="bb-e">— m</dd>
+        <dt>South</dt><dd id="bb-s">— m</dd>
+        <dt>North</dt><dd id="bb-n">— m</dd>
+      </dl>
+      <div class="hint" style="margin-top:6px">Box = longest side × GSD from tile GeoTIFF transform</div>
+    </div>
+
+    <div class="panel" style="border-color:rgba(255,90,122,.35);background:rgba(255,45,45,.06)">
+      <div class="section-head"><span style="color:var(--danger)">Landing Hazard Analysis</span></div>
+      <div id="hazard-analysis-content" style="font-size:11.5px;line-height:1.55;color:#f0c0cb">
+        Analyzing site hazards…
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-head"><span>Physical Estimates</span></div>
+      <dl class="coord-grid" style="grid-template-columns:1fr;">
+        <dt>Volume (sphere)</dt><dd id="phys-vol">— m³</dd>
+        <dt>Mass (ρ=2.7 g/cm³)</dt><dd id="phys-mass">— t</dd>
+        <dt>Surface area</dt><dd id="phys-area">— m²</dd>
+        <dt>Albedo estimate</dt><dd id="phys-albedo">—</dd>
+        <dt>Thermal inertia (est.)</dt><dd id="phys-ti">— J·m⁻²·K⁻¹·s⁻¹ᐟ²</dd>
+        <dt>Sphericity index</dt><dd id="phys-sph">—</dd>
+      </dl>
+    </div>
+
+    <div class="panel">
+      <div class="section-head"><span>Tile Context Render</span></div>
+      <div class="visual-card" id="visual-card">
+        <canvas id="context-canvas"></canvas>
+        <div class="visual-overlay">
+          <span class="visual-title">Tile context · 512×512 px · 0.5 m/px</span>
+          <div class="visual-scale"><div class="bar"></div><span class="label">250 m</span></div>
+        </div>
+      </div>
+      <div class="hint">Red dashed box = detection footprint · Yellow ring = 3× diameter clearance zone · Cyan crosshair = centroid</div>
+    </div>
+
+    <a class="back-link" href="index.html?loaded=1" id="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <span>Back to Hazard Map</span>
+    </a>
+  </aside>
+
+  <main id="main">
+    <div id="canvas-wrap">
+      <canvas id="detail-canvas"></canvas>
+      <div id="canvas-3d-wrap"></div>
+    </div>
+
+    <div class="hud" id="hud"></div>
+
+    <div class="measurement-overlay">
+      <div class="measure-item dia"><span class="val" id="meas-dia">—</span><span class="lab">Diameter</span></div>
+      <div class="measure-item conf"><span class="val" id="meas-conf">—</span><span class="lab">Confidence</span></div>
+      <div class="measure-item"><span class="val" id="meas-px">—</span><span class="lab">Box (px)</span></div>
+      <div class="measure-item"><span class="val" id="meas-gsd">—</span><span class="lab">GSD (m/px)</span></div>
+    </div>
+
+    <div id="loading" class="loading">
+      <div class="loader-card">
+        <div class="spinner"></div>
+        <h3>Loading boulder data…</h3>
+        <p>Fetching tile imagery and hazard context</p>
+      </div>
+    </div>
+
+    <div id="error" hidden>
+      <div class="error-card" style="max-width:420px;border:1px solid rgba(255,90,122,.3);background:rgba(28,10,18,.85);border-radius:16px;padding:24px;text-align:center">
+        <h3 style="margin:0 0 10px;color:#ffb3c3;font-size:17px">Failed to load</h3>
+        <p style="color:#d4b5c0;font-size:12px;line-height:1.6;margin:0 0 14px" id="error-msg"></p>
+        <a href="index.html?loaded=1" style="display:inline-block;padding:10px 20px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.05);color:#dce4f0;font-size:12px;font-weight:650;text-decoration:none">Return to map</a>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" aria-live="polite"></div>
+  </main>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+function showToast(msg, ms=3500){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function fmt(n, d=2){ return Number(n).toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d}); }
+function fmtInt(n){ return Math.round(n).toLocaleString(); }
+
+/* ---------- URL parsing ---------- */
+const params = new URLSearchParams(location.search);
+const boulderId = params.get('id');
+const conf = parseFloat(params.get('conf')) || 0.25;
+const profile = params.get('profile') || 'lander';
+const opacity = parseFloat(params.get('opacity')) || 0.55;
+
+if(!boulderId){
+  showError('No boulder ID in URL. Use ?id=boulder_XXXX');
+  throw new Error('missing id');
+}
+
+/* ---------- State ---------- */
+let meta = null, geoData = null, boulder = null, tileImg = null;
+const GSD = 0.5;
+
+/* ---------- Three.js scene for 3D boulder ---------- */
+let scene, camera, renderer, controls, boulderMesh, ringMesh, starMesh, labelSprite;
+const canvas3dWrap = $('#canvas-3d-wrap');
+let autoRotate = true;
+let lastInteraction = 0;
+
+function initThree(){
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x03050a);
+
+  const wrapRect = canvas3dWrap.getBoundingClientRect();
+  const aspect = wrapRect.width / wrapRect.height || 1;
+  camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 5000);
+  camera.position.set(0, 8, 18);
+
+  renderer = new THREE.WebGLRenderer({antialias:true, alpha:true, preserveDrawingBuffer:true});
+  renderer.setSize(wrapRect.width, wrapRect.height, false);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+  canvas3dWrap.appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.minDistance = 3;
+  controls.maxDistance = 600;
+  controls.target.set(0, 1.5, 0);
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.3;
+
+  controls.addEventListener('start', () => {
+    autoRotate = false;
+    lastInteraction = Date.now();
+  });
+  controls.addEventListener('end', () => {
+    setTimeout(() => { if(Date.now() - lastInteraction > 3000) autoRotate = true; }, 3000);
+  });
+
+  // Star field
+  const starGeo = new THREE.BufferGeometry();
+  const starCount = 1200;
+  const positions = new Float32Array(starCount * 3);
+  const colors = new Float32Array(starCount * 3);
+  const sizes = new Float32Array(starCount);
+  for(let i=0;i<starCount;i++){
+    const r = 800 + Math.random()*1200;
+    const theta = Math.random()*Math.PI*2;
+    const phi = Math.acos(2*Math.random()-1);
+    positions[i*3] = r*Math.sin(phi)*Math.cos(theta);
+    positions[i*3+1] = r*Math.cos(phi);
+    positions[i*3+2] = r*Math.sin(phi)*Math.sin(theta);
+    const c = Math.random() > 0.6 ? new THREE.Color(0xfff8e8) : new THREE.Color(0xa8c8ff);
+    colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
+    sizes[i] = 0.8 + Math.random()*1.6;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+  starGeo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+  starGeo.setAttribute('size', new THREE.BufferAttribute(sizes,1));
+  const starMat = new THREE.PointsMaterial({size:1, vertexColors:true, transparent:true, opacity:0.7, depthWrite:false});
+  starMesh = new THREE.Points(starGeo, starMat);
+  scene.add(starMesh);
+
+  // Ground plane (lunar surface suggestion)
+  const groundGeo = new THREE.PlaneGeometry(800, 800, 60, 60);
+  const pos = groundGeo.attributes.position;
+  for(let i=0;i<pos.count;i++){
+    const x = pos.getX(i), y = pos.getY(i);
+    const n = (Math.sin(x*0.2)*Math.cos(y*0.15) + Math.sin(x*0.07)*Math.cos(y*0.3)) * 0.15;
+    pos.setZ(i, n);
+  }
+  groundGeo.computeVertexNormals();
+  const groundMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1d24, roughness: 0.95, metalness: 0.02,
+    vertexColors: false, side: THREE.DoubleSide
+  });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI/2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Lighting
+  const sunDir = new THREE.Vector3(-0.35, 0.85, -0.4).normalize();
+  const sun = new THREE.DirectionalLight(0xfff5e0, 2.2);
+  sun.position.copy(sunDir).multiplyScalar(80);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 200;
+  sun.shadow.camera.left = -500;
+  sun.shadow.camera.right = 500;
+  sun.shadow.camera.top = 500;
+  sun.shadow.camera.bottom = -500;
+  sun.shadow.bias = -0.0008;
+  sun.shadow.normalBias = 0.02;
+  scene.add(sun);
+
+  const hemi = new THREE.HemisphereLight(0x3a5a7a, 0x080c14, 0.6);
+  scene.add(hemi);
+
+  const fill = new THREE.DirectionalLight(0x6cc8ff, 0.35);
+  fill.position.set(30, 40, 30);
+  scene.add(fill);
+
+  // Boulder will be added after load
+  animate();
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  if(autoRotate && starMesh){
+    starMesh.rotation.y += 0.00003;
+    if(boulderMesh) boulderMesh.rotation.y += 0.0005;
+  }
+  renderer.render(scene, camera);
+}
+
+/* ---------- Load data ---------- */
+async function loadData(){
+  try{
+    [meta, geoData] = await Promise.all([
+      fetch('data/hazard_meta.json').then(r=>r.json()),
+      fetch('data/detections.geojson').then(r=>r.json())
+    ]);
+    window.geoData = geoData; // Make accessible to buildBoulder3D
+  }catch(e){
+    showError('Failed to load meta/geoData: ' + e.message);
+    return;
+  }
+
+  boulder = geoData.features.find(f => f.properties.id === boulderId);
+  if(!boulder){
+    showError('Boulder not found: ' + boulderId);
+    return;
+  }
+
+  // load tile image
+  const tileName = boulder.properties.tile;
+  const tileUrl = 'data/tiles/images/' + tileName + '.png';
+  try{
+    tileImg = await loadImage(tileUrl);
+  }catch(e){
+    showError('Failed to load tile image: ' + e.message);
+    return;
+  }
+
+  $('#loading').hidden = true;
+  populateUI();
+  renderContextCanvas();
+  buildBoulder3D();
+  showToast('Loaded ' + boulderId + ' · ' + fmt(boulder.properties.diameter_m, 2) + ' m', 4000);
+}
+
+function loadImage(url){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Image load failed: ' + url));
+    img.src = url;
+  });
+}
+
+function showError(msg){
+  $('#loading').hidden = true;
+  $('#error').hidden = false;
+  $('#error-msg').textContent = msg;
+}
+
+/* ---------- UI population ---------- */
+function populateUI(){
+  const p = boulder.properties;
+  const x = boulder.geometry.coordinates[0];
+  const y = boulder.geometry.coordinates[1];
+  const dia = p.diameter_m;
+  const confPct = Math.round(p.confidence * 100);
+  const zone = getZone(p, meta, profile);
+  const zoneLabels = ['SAFE','CAUTION','UNSAFE'];
+  const zoneClass = ['safe','caution','unsafe'];
+
+  $('#boulder-id').textContent = '#' + boulderId.replace('boulder_','');
+  $('#stat-dia').textContent = fmt(dia, 2) + ' m';
+  $('#stat-conf').textContent = confPct + '%';
+  $('#stat-gsd').textContent = fmt(p.gsd_m, 2) + ' m/px';
+  $('#stat-tile').textContent = p.tile;
+
+  const zb = $('#badge-zone');
+  zb.className = 'badge ' + zoneClass[zone];
+  zb.querySelector('.dot').style.background = zone === 0 ? 'var(--safe)' : zone === 1 ? 'var(--warn)' : 'var(--danger)';
+  zb.querySelector('span:last-child').textContent = 'Zone: ' + zoneLabels[zone];
+
+  const hints = {
+    0: 'No size or density threshold exceeded in this cell.',
+    1: 'Caution: survey before landing or driving through.',
+    2: 'Unsafe: boulder size or density exceeds profile limit.'
+  };
+  $('#zone-hint').textContent = hints[zone];
+
+  $('#loc-x').textContent = fmt(x, 1) + ' m';
+  $('#loc-y').textContent = fmt(y, 1) + ' m';
+  $('#loc-lat').textContent = (p.lat != null ? p.lat.toFixed(6) + '°' : '—');
+  $('#loc-lon').textContent = (p.lon != null ? p.lon.toFixed(6) + '°' : '—');
+
+  const bb = p.bbox_m || [0,0,0,0];
+  $('#bb-w').textContent = fmt(bb[0], 1) + ' m';
+  $('#bb-e').textContent = fmt(bb[2], 1) + ' m';
+  $('#bb-s').textContent = fmt(bb[1], 1) + ' m';
+  $('#bb-n').textContent = fmt(bb[3], 1) + ' m';
+
+  // Physical estimates. These are deterministic for a given boulder so the
+  // panel does not change value on every reload (they used to be Math.random).
+  const radius = dia / 2;
+  const vol = (4/3) * Math.PI * radius**3;
+  const mass = vol * 2700; // kg (ρ=2.7 g/cm³)
+  const area = 4 * Math.PI * radius**2;
+  const seed = hashStr(boulderId);
+  const rnd = mulberry32(seed);
+  const albedo = 0.12 + rnd() * 0.08; // typical lunar regolith
+  const ti = 45 + rnd() * 15; // J·m⁻²·K⁻¹·s⁻¹ᐟ²
+  const sphericity = 0.6 + rnd() * 0.3; // 0.6-0.9 for natural rocks
+
+  $('#phys-vol').textContent = fmt(vol, 2) + ' m³';
+  $('#phys-mass').textContent = fmt(mass / 1000, 1) + ' t';
+  $('#phys-area').textContent = fmt(area, 1) + ' m²';
+  $('#phys-albedo').textContent = albedo.toFixed(3);
+  $('#phys-ti').textContent = Math.round(ti);
+  $('#phys-sph').textContent = sphericity.toFixed(2);
+
+  // HUD
+  $('#hud').innerHTML = `
+    <div class="hud-card">
+      <div class="hud-row"><dt>Boulder ID</dt><dd>#${boulderId.replace('boulder_','')}</dd></div>
+      <div class="hud-divider"></div>
+      <div class="hud-row"><dt>Diameter</dt><dd>${fmt(dia,2)}<span class="unit">m</span></dd></div>
+      <div class="hud-row"><dt>Volume</dt><dd>${fmt(vol,2)}<span class="unit">m³</span></dd></div>
+      <div class="hud-row"><dt>Mass (ρ=2.7)</dt><dd>${fmt(mass/1000,1)}<span class="unit">t</span></dd></div>
+      <div class="hud-row"><dt>Surface area</dt><dd>${fmt(area,1)}<span class="unit">m²</span></dd></div>
+      <div class="hud-row"><dt>Albedo (est.)</dt><dd>${albedo.toFixed(3)}</dd></div>
+      <div class="hud-row"><dt>Thermal inertia (est.)</dt><dd>${Math.round(ti)}</dd></div>
+      <div class="hud-row"><dt>Sphericity (est.)</dt><dd>${sphericity.toFixed(2)}</dd></div>
+      <div class="hud-divider"></div>
+      <div class="hud-row"><dt>Detection confidence</dt><dd>${confPct}%</dd></div>
+      <div class="hud-row"><dt>Bounding box</dt><dd>${fmt(p.diameter_px,1)} px</dd></div>
+      <div class="hud-row"><dt>GSD</dt><dd>${fmt(p.gsd_m,2)} m/px</dd></div>
+      <div class="hud-divider"></div>
+      <div class="hud-row"><dt>Hazard zone</dt><dd><span class="hud-badge ${zoneClass[zone]}">${zoneLabels[zone]}</span></dd></div>
+      <div class="hud-row"><dt>Profile</dt><dd>${meta.profiles[profile].label}</dd></div>
+      <div class="hud-divider"></div>
+      <div class="hud-row"><dt>Tile</dt><dd>${p.tile}</dd></div>
+      <div class="hud-row"><dt>Detector</dt><dd>${p.source || 'unknown'}</dd></div>
+    </div>
+  `;
+
+  // Measurement overlay
+  $('#meas-dia').textContent = fmt(dia, 2) + ' m';
+  $('#meas-conf').textContent = confPct + '%';
+  $('#meas-px').textContent = fmt(p.diameter_px, 1) + ' px';
+  $('#meas-gsd').textContent = fmt(p.gsd_m, 2);
+}
+
+function getZone(p, meta, profile){
+  if(!meta || !meta.profiles[profile]) return 0;
+  const th = meta.profiles[profile].thresholds;
+  const sizeZone = p.diameter_m >= th.size.unsafe_min_diameter_m ? 2
+    : p.diameter_m >= th.size.safe_max_diameter_m ? 1 : 0;
+  const densityZone = 1 >= th.density.unsafe_min_count ? 2
+    : 1 > th.density.safe_max_count ? 1 : 0;
+  return Math.max(sizeZone, densityZone);
+}
+
+/* Map site coordinates to a 50 m hazard-grid cell (row 0 is north). */
+function gridCellIndex(x, y, meta){
+  const g = meta && meta.grid;
+  if(!g || !g.bounds_m) return null;
+  const cell = g.cell_size_m || 50;
+  const xmin = g.bounds_m[0], ymax = g.bounds_m[3];
+  const c = Math.floor((x - xmin) / cell);
+  const r = Math.floor((ymax - y) / cell);
+  if(c < 0 || r < 0 || c >= g.cols || r >= g.rows) return null;
+  return {r, c};
+}
+
+/* Hazard zone that the 50 m grid assigns to the cell containing (x, y). */
+function getCellZone(x, y, meta, profile){
+  const idx = gridCellIndex(x, y, meta);
+  const prof = meta && meta.profiles && meta.profiles[profile];
+  if(!idx || !prof || !prof.zones) return null;
+  const z = prof.zones[idx.r] && prof.zones[idx.r][idx.c];
+  return Number.isFinite(z) ? z : null;
+}
+
+/* Nearest cell the lander profile classified safe, in site coordinates. */
+function nearestSafeCell(x, y, meta, profile){
+  const g = meta && meta.grid;
+  const prof = meta && meta.profiles && meta.profiles[profile];
+  if(!g || !prof || !prof.zones) return null;
+  const cell = g.cell_size_m || 50;
+  const xmin = g.bounds_m[0], ymax = g.bounds_m[3];
+  let best = null;
+  for(let r=0; r<prof.zones.length; r++){
+    for(let c=0; c<prof.zones[r].length; c++){
+      if(prof.zones[r][c] !== 0) continue;
+      const cx = xmin + (c + 0.5) * cell;
+      const cy = ymax - (r + 0.5) * cell;
+      const dist = Math.hypot(cx - x, cy - y);
+      if(!best || dist < best.dist) best = {r, c, x: cx, y: cy, dist};
+    }
+  }
+  return best;
+}
+
+/* ---------- 2D context canvas (tile crop showing boulder at actual position) ---------- */
+function renderContextCanvas(){
+  const canvas = $('#context-canvas');
+  const wrap = $('#visual-card');
+  const w = wrap.clientWidth;
+  const h = 280;
+  canvas.width = w * devicePixelRatio;
+  canvas.height = h * devicePixelRatio;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  if(!tileImg){ return; }
+
+  const tileMeta = meta.tiles?.find(t => t.name === boulder.properties.tile);
+  if(!tileMeta){
+    ctx.drawImage(tileImg, 0, 0, w, h);
+    return;
+  }
+
+  const gsd = meta.gsd_m;
+  const tileWest = tileMeta.bounds_m[0];
+  const tileNorth = tileMeta.bounds_m[3];
+  const bx = boulder.geometry.coordinates[0];
+  const by = boulder.geometry.coordinates[1];
+
+  // Show a fixed 600m window around the boulder, but keep boulder at its actual position
+  const viewHalf = 300;
+  const viewW = viewHalf * 2;
+  const viewH = viewHalf * 2;
+
+  const sx = (bx - tileWest) / gsd; // boulder X in tile pixels
+  const sy = (tileNorth - by) / gsd; // boulder Y in tile pixels
+
+  const cropW = viewW / gsd;
+  const cropH = viewH / gsd;
+
+  // Crop window centered on boulder, clamped to tile bounds
+  let srcX = Math.max(0, Math.min(tileImg.width - cropW, sx - cropW/2));
+  let srcY = Math.max(0, Math.min(tileImg.height - cropH, sy - cropH/2));
+  const srcW = Math.min(cropW, tileImg.width - srcX);
+  const srcH = Math.min(cropH, tileImg.height - srcY);
+
+  ctx.drawImage(tileImg, srcX, srcY, srcW, srcH, 0, 0, w, h);
+
+  // Boulder position in canvas coords (not centered - actual position)
+  const cx = (sx - srcX) / srcW * w;
+  const cy = (sy - srcY) / srcH * h;
+
+  // Draw other boulders in this tile
+  const p = boulder.properties;
+  const otherBoulders = geo.features.filter(f =>
+    f.properties.tile === p.tile && f.properties.id !== boulderId
+  );
+  ctx.fillStyle = 'rgba(108,200,255,0.25)';
+  for(const ob of otherBoulders){
+    const ox = (ob.geometry.coordinates[0] - tileWest) / gsd;
+    const oy = (tileNorth - ob.geometry.coordinates[1]) / gsd;
+    if(ox >= srcX && ox <= srcX + srcW && oy >= srcY && oy <= srcY + srcH){
+      const ocx = (ox - srcX) / srcW * w;
+      const ocy = (oy - srcY) / srcH * h;
+      const r = Math.max(2, (ob.properties.diameter_px || 5) * (w / srcW) / 2);
+      ctx.beginPath();
+      ctx.arc(ocx, ocy, r, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // Draw detection box at actual boulder position
+  const boxPx = p.diameter_px;
+  const boxScreen = boxPx * (w / srcW);
+
+  ctx.strokeStyle = 'rgba(255,70,100,0.95)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6,4]);
+  ctx.strokeRect(cx - boxScreen/2, cy - boxScreen/2, boxScreen, boxScreen);
+  ctx.setLineDash([]);
+
+  // 3x diameter ring
+  ctx.strokeStyle = 'rgba(255,184,77,0.7)';
+  ctx.lineWidth = 1.5;
+  const ringR = boxScreen * 1.5;
+  ctx.beginPath(); ctx.arc(cx, cy, ringR, 0, Math.PI*2); ctx.stroke();
+
+  // Center crosshair
+  ctx.strokeStyle = 'rgba(108,200,255,0.9)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - 12, cy); ctx.lineTo(cx - 4, cy);
+  ctx.moveTo(cx + 4, cy); ctx.lineTo(cx + 12, cy);
+  ctx.moveTo(cx, cy - 12); ctx.lineTo(cx, cy - 4);
+  ctx.moveTo(cx, cy + 4); ctx.lineTo(cx, cy + 12);
+  ctx.stroke();
+
+  // Position label (top-left of tile coords)
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = '10px "Segoe UI", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Tile: ' + p.tile, 10, 18);
+  ctx.fillText('Boulder #' + boulderId.replace('boulder_',''), 10, 32);
+  ctx.fillStyle = 'rgba(108,200,255,0.95)';
+  ctx.font = '11px "Segoe UI", sans-serif';
+  ctx.fillText(fmt(dia,2) + ' m  ·  ' + Math.round(p.confidence*100) + '%', 10, 46);
+
+  // Scale bar (bottom-right)
+  const scaleM = 250;
+  const scalePx = scaleM / gsd * (w / srcW);
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(w - scalePx - 15, h - 20);
+  ctx.lineTo(w - 15, h - 20);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = '9px "Segoe UI", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(scaleM + ' m', w - scalePx/2 - 15, h - 25);
+
+  // North arrow (top-right)
+  ctx.save();
+  ctx.translate(w - 30, 30);
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, 12); ctx.lineTo(0, -12);
+  ctx.moveTo(-4, -6); ctx.lineTo(0, -12); ctx.lineTo(4, -6);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = '9px "Segoe UI", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('N', 0, -16);
+  ctx.restore();
+}
+
+/* ---------- 3D boulder mesh and Neighboring Hazards ---------- */
+function buildBoulder3D(){
+  const p = boulder.properties;
+  const dia = p.diameter_m;
+  const radius = dia / 2;
+  const tx = boulder.geometry.coordinates[0];
+  const ty = boulder.geometry.coordinates[1];
+
+  // Target boulder with coherent noise displacement (no spikes)
+  const detail = 4;
+  const geo = new THREE.IcosahedronGeometry(radius, detail);
+  const pos = geo.attributes.position;
+  const h = hashStr(boulderId);
+  const freq = 1.8 + (h % 100) / 100;
+
+  for(let i=0;i<pos.count;i++){
+    const v = new THREE.Vector3().fromBufferAttribute(pos, i);
+    const n = v.clone().normalize();
+    // Coherent spherical noise
+    const noise = 1 + (Math.sin(n.x * freq + h) * Math.cos(n.y * freq - h) * Math.sin(n.z * freq)) * 0.25;
+    v.multiplyScalar(noise);
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  geo.computeVertexNormals();
+
+  // Material: realistic lunar regolith coating on bedrock
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x8a9199, roughness: 0.88, metalness: 0.05, flatShading: false
+  });
+  boulderMesh = new THREE.Mesh(geo, mat);
+  boulderMesh.castShadow = true;
+  boulderMesh.receiveShadow = true;
+  boulderMesh.position.set(0, radius * 0.8, 0); // half-buried look
+  scene.add(boulderMesh);
+
+  // Mark all neighbors within 250m (use the loaded GeoJSON, not the Three.js geo)
+  const neighbors = window.geoData.features.filter(f => {
+    if(f.properties.id === boulderId) return false;
+    const nx = f.geometry.coordinates[0];
+    const ny = f.geometry.coordinates[1];
+    return Math.hypot(nx - tx, ny - ty) <= 250;
+  });
+
+  // Safe landing site indicator — nearest 50 m cell the lander profile
+  // classified safe (computed from the hazard grid, not a fixed offset).
+  const safeCell = nearestSafeCell(tx, ty, meta, profile);
+  if(safeCell){
+    const safeSpot = new THREE.Vector3(safeCell.x - tx, 0.1, ty - safeCell.y);
+    const safeMarkerGeo = new THREE.RingGeometry(8, 9, 64);
+    const safeMarkerMat = new THREE.MeshBasicMaterial({color: 0x00ff66, side: THREE.DoubleSide, transparent:true, opacity:0.8});
+    const safeMarker = new THREE.Mesh(safeMarkerGeo, safeMarkerMat);
+    safeMarker.rotation.x = -Math.PI/2;
+    safeMarker.position.copy(safeSpot);
+    scene.add(safeMarker);
+
+    const safeLabelCanvas = document.createElement('canvas');
+    safeLabelCanvas.width = 512; safeLabelCanvas.height = 64;
+    const sctx = safeLabelCanvas.getContext('2d');
+    sctx.fillStyle = 'rgba(0,40,20,0.8)'; sctx.fillRect(0,0,512,64);
+    sctx.strokeStyle = '#00ff66'; sctx.lineWidth = 4; sctx.strokeRect(2,2,508,60);
+    sctx.fillStyle = '#00ff66'; sctx.font = 'bold 24px "Segoe UI", sans-serif'; sctx.textAlign = 'center';
+    sctx.fillText(`NEAREST SAFE CELL · ${Math.round(safeCell.dist)} m`, 256, 40);
+    const safeLabelTex = new THREE.CanvasTexture(safeLabelCanvas);
+    const safeSprite = new THREE.Sprite(new THREE.SpriteMaterial({map: safeLabelTex, transparent:true}));
+    safeSprite.scale.set(24, 3, 1);
+    safeSprite.position.set(safeSpot.x, 8, safeSpot.z);
+    scene.add(safeSprite);
+  }
+
+  neighbors.forEach(n => {
+    const np = n.properties;
+    const nx = n.geometry.coordinates[0] - tx;
+    const ny = ty - n.geometry.coordinates[1]; // Correct coordinate inversion for 3D
+    const nRadius = np.diameter_m / 2;
+
+    // Neighbor mesh
+    const nGeo = new THREE.IcosahedronGeometry(nRadius, 2);
+    const isUnsafe = np.diameter_m >= 3;
+    const nMat = new THREE.MeshStandardMaterial({
+      color: isUnsafe ? 0xff3355 : np.diameter_m >= 1 ? 0xffaa00 : 0x778899,
+      roughness: 0.8,
+      emissive: isUnsafe ? 0xff0000 : 0x000000,
+      emissiveIntensity: isUnsafe ? 0.2 : 0
+    });
+    const nMesh = new THREE.Mesh(nGeo, nMat);
+    nMesh.position.set(nx, nRadius * 0.8, ny);
+    nMesh.castShadow = true;
+    nMesh.receiveShadow = true;
+    scene.add(nMesh);
+
+    // Hazard Marker Box (Holographic look)
+    if(np.diameter_m >= 1) {
+      const boxGeo = new THREE.BoxGeometry(nRadius*3, 0.5, nRadius*3);
+      const boxMat = new THREE.MeshBasicMaterial({
+        color: isUnsafe ? 0xff0000 : 0xffaa00,
+        transparent: true,
+        opacity: 0.3,
+        wireframe: true
+      });
+      const hBox = new THREE.Mesh(boxGeo, boxMat);
+      hBox.position.set(nx, 0.1, ny);
+      scene.add(hBox);
+    }
+
+    // High-visibility glowing vertical indicator pole
+    const poleHeight = Math.max(15, np.diameter_m * 6);
+    const poleGeo = new THREE.CylinderGeometry(0.2, 0.2, poleHeight, 8);
+    const poleColor = isUnsafe ? 0xff3355 : np.diameter_m >= 1 ? 0xffaa00 : 0x44ffaa;
+    const poleMat = new THREE.MeshBasicMaterial({ color: poleColor, transparent: true, opacity: 0.6 });
+    const pole = new THREE.Mesh(poleGeo, poleMat);
+    pole.position.set(nx, poleHeight / 2, ny);
+    scene.add(pole);
+
+    // Hazard distance line for close ones
+    const dist = Math.hypot(nx, ny);
+    if(dist < 120){
+      const lineMat = new THREE.LineDashedMaterial({color: isUnsafe ? 0xff3355 : 0xffaa00, dashSize: 4, gapSize: 2});
+      const points = [new THREE.Vector3(0, 2, 0), new THREE.Vector3(nx, 2, ny)];
+      const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(lineGeo, lineMat);
+      line.computeLineDistances();
+      scene.add(line);
+
+      // label distance
+      const dLabelCanvas = document.createElement('canvas');
+      dLabelCanvas.width = 128; dLabelCanvas.height = 48;
+      const dctx = dLabelCanvas.getContext('2d');
+      dctx.fillStyle = isUnsafe ? 'rgba(60,0,0,0.9)' : 'rgba(40,30,0,0.9)'; dctx.fillRect(0,0,128,48);
+      dctx.fillStyle = '#ffffff'; dctx.font = 'bold 22px "Segoe UI", sans-serif'; dctx.textAlign = 'center';
+      dctx.fillText(dist.toFixed(0) + 'm', 64, 32);
+      const dLabelTex = new THREE.CanvasTexture(dLabelCanvas);
+      const dSprite = new THREE.Sprite(new THREE.SpriteMaterial({map: dLabelTex, transparent:true, depthTest:false}));
+      dSprite.scale.set(8, 3, 1);
+      dSprite.position.set(nx/2, 6, ny/2);
+      scene.add(dSprite);
+    }
+  });
+
+  // Simulated Lander footprint (Apollo-style LM suggest)
+  const legSpan = 8.5; // metres
+  const landerWrap = new THREE.Group();
+  landerWrap.position.set(12, 0, 12); // place lander near target to show hazard
+  scene.add(landerWrap);
+
+  const bodyMat = new THREE.MeshStandardMaterial({color: 0xdbe7f7, metalness: 0.6, roughness: 0.3});
+  const goldMat = new THREE.MeshStandardMaterial({color: 0xffd700, metalness: 0.8, roughness: 0.2});
+
+  const descentStage = new THREE.Mesh(new THREE.BoxGeometry(4, 2.5, 4), goldMat);
+  descentStage.position.y = 2.5;
+  landerWrap.add(descentStage);
+
+  const ascentStage = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2, 2.2, 8), bodyMat);
+  ascentStage.position.y = 4.8;
+  landerWrap.add(ascentStage);
+
+  // Legs
+  for(let i=0; i<4; i++){
+    const angle = (i * Math.PI / 2) + Math.PI/4;
+    const leg = new THREE.Group();
+    leg.rotation.y = angle;
+    landerWrap.add(leg);
+
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 5, 8), bodyMat);
+    strut.rotation.z = Math.PI / 4;
+    strut.position.set(2, 1.8, 0);
+    leg.add(strut);
+
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.15, 12), goldMat);
+    pad.position.set(3.8, 0.1, 0);
+    leg.add(pad);
+
+    // Hazard collision lines from legs
+    const legX = Math.cos(angle) * 3.8 + 12;
+    const legZ = Math.sin(angle) * 3.8 + 12;
+    // show warning if leg is close to target boulder
+    if(Math.hypot(legX, legZ) < radius + 1){
+        const warnLine = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 10, 8), new THREE.MeshBasicMaterial({color: 0xff0000, transparent:true, opacity:0.6}));
+        warnLine.position.set(legX, 5, legZ);
+        scene.add(warnLine);
+    }
+  }
+
+  // Hazard Clearance Envelope
+  const envGeo = new THREE.RingGeometry(legSpan/2, legSpan/2 + 0.2, 64);
+  const envMat = new THREE.MeshBasicMaterial({color: 0xff5a7a, side: THREE.DoubleSide, transparent:true, opacity:0.5});
+  const env = new THREE.Mesh(envGeo, envMat);
+  env.rotation.x = -Math.PI/2;
+  env.position.set(12, 0.1, 12);
+  scene.add(env);
+
+  // Analysis Sidebar Update — all values are computed from the hazard grid and
+  // the loaded detections. Nothing here is hard-coded per boulder.
+  const prof = meta.profiles[profile];
+  const th = prof.thresholds;
+  const cellIdx = gridCellIndex(tx, ty, meta);
+  const cellZone = getCellZone(tx, ty, meta, profile);
+  const cellBoulders = cellIdx ? window.geoData.features.filter(f => {
+    const i = gridCellIndex(f.geometry.coordinates[0], f.geometry.coordinates[1], meta);
+    return i && i.r === cellIdx.r && i.c === cellIdx.c;
+  }) : [];
+  const cellCount = cellBoulders.length;
+  const cellMax = cellBoulders.reduce((m, f) => Math.max(m, f.properties.diameter_m), 0);
+
+  const unsafeN = neighbors.filter(n => n.properties.diameter_m >= th.size.unsafe_min_diameter_m).length;
+  const closeN = neighbors.filter(n => Math.hypot(n.geometry.coordinates[0]-tx, ty-n.geometry.coordinates[1]) < 50).length;
+  const totalN = neighbors.length;
+
+  const zoneNames = ['SAFE', 'CAUTION', 'UNSAFE'];
+  const zoneVar = ['var(--safe)', 'var(--warn)', 'var(--danger)'];
+  const zoneBg = ['rgba(0,255,102,.18)', 'rgba(255,184,77,.18)', 'rgba(255,90,122,.18)'];
+  const z = cellZone == null ? getZone(p, meta, profile) : cellZone;
+  const sizeZoneOfBoulder = getZone(p, meta, profile);
+
+  const noun = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const cellNoun = noun(cellCount, 'boulder', 'boulders');
+  const closeNoun = noun(closeN, 'object', 'objects');
+  const totalNoun = noun(totalN, 'boulder', 'boulders');
+  const unsafeNoun = noun(unsafeN, 'boulder', 'boulders');
+
+  let clearance, note;
+  if (z === 2) {
+    clearance = `BLOCKED — cell has ${cellNoun}, largest ${fmt(cellMax,1)} m ` +
+      `(limits: ${th.size.unsafe_min_diameter_m} m / ${th.density.unsafe_min_count} per cell)`;
+    note = 'Do not target this cell. Pick a cell classified safe on the 2D hazard map.';
+  } else if (z === 1) {
+    clearance = `RESTRICTED — cell has ${cellNoun}, largest ${fmt(cellMax,1)} m ` +
+      `(safe limit ${th.size.safe_max_diameter_m} m)`;
+    note = 'Survey the pad and clear the listed boulders before committing.';
+  } else {
+    clearance = `CLEAR — cell has ${cellNoun}, largest ${fmt(cellMax,1)} m, ` +
+      `within the ${th.size.safe_max_diameter_m} m safe limit`;
+    note = 'Cell passes the lander thresholds; the boulder itself must still be avoided.';
+  }
+
+  const safeCellInfo = safeCell;
+  const safeNote = safeCellInfo
+    ? `<i style="font-size:10px;color:var(--faint)">Nearest cell classified safe: ${Math.round(safeCellInfo.dist)} m away (green marker).</i>`
+    : '';
+
+  $('#hazard-analysis-content').innerHTML = `
+    <div style="margin-bottom:8px"><b>Cell suitability:</b> <span style="background:${zoneBg[z]};color:${zoneVar[z]};border:1px solid ${zoneVar[z]};padding:2px 6px;border-radius:4px;font-weight:bold">${zoneNames[z]}</span></div>
+    <div style="margin-bottom:4px">This boulder: <b>${fmt(dia,1)} m</b> · zone <b>${['SAFE','CAUTION','UNSAFE'][sizeZoneOfBoulder]}</b></div>
+    <div style="margin-bottom:4px">Primary obstacle: <b>#${boulderId.replace('boulder_','')}</b> (${fmt(dia,1)}m)</div>
+    <div style="margin-bottom:4px">Cell boulders: <b>${cellCount}</b> · largest <b>${fmt(cellMax,1)} m</b></div>
+    <div style="margin-bottom:4px">Neighbour density: <b>${closeNoun}</b> in 50m radius</div>
+    <div style="margin-bottom:4px">Visible neighbours: <b>${totalNoun}</b> in 250m radius</div>
+    <div style="margin-bottom:4px">Boulders &gt;${th.size.unsafe_min_diameter_m}m: <b>${unsafeNoun}</b> in 250m radius</div>
+    <div style="margin-bottom:4px">Landing clearance: <b>${clearance}</b></div>
+    <div style="margin-top:8px;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;border-left:3px solid ${zoneVar[z]}">
+      ${note}<br>${safeNote}
+    </div>
+  `;
+
+  // Camera framing - zoom out to show neighbors and lander
+  const maxNeighborDist = neighbors.length > 0
+    ? Math.max(...neighbors.map(n => Math.hypot(n.geometry.coordinates[0] - tx, ty - n.geometry.coordinates[1])))
+    : 0;
+  const dist = Math.max(50, maxNeighborDist * 2.5, dia * 10);
+  camera.position.set(dist * 0.5, dist * 0.3, dist * 0.5);
+  controls.target.set(0, radius, 0);
+  controls.update();
+
+  // Pulse ring for target
+  const ringGeo = new THREE.RingGeometry(radius * 3, radius * 3.1, 64);
+  const ringMat = new THREE.MeshBasicMaterial({color: 0xffb84d, side: THREE.DoubleSide, transparent:true, opacity:0.6});
+  ringMesh = new THREE.Mesh(ringGeo, ringMat);
+  ringMesh.rotation.x = -Math.PI/2;
+  ringMesh.position.y = 0.2;
+  scene.add(ringMesh);
+}
+
+/* ---------- Resize handling ---------- */
+function onResize(){
+  const wrapRect = $('#canvas-3d-wrap').getBoundingClientRect();
+  if(wrapRect.width && wrapRect.height){
+    camera.aspect = wrapRect.width / wrapRect.height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(wrapRect.width, wrapRect.height, false);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  }
+  renderContextCanvas();
+}
+window.addEventListener('resize', onResize);
+
+/* ---------- Utils ---------- */
+function hashStr(str){
+  let h = 2166136261 >>> 0;
+  for(let i=0;i<str.length;i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function mulberry32(a){
+  return function(){
+    let t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* ---------- Boot ---------- */
+initThree();
+loadData();
+</script>
+</body>
+</html>

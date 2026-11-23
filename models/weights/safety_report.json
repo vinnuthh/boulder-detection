@@ -1,0 +1,71 @@
+{
+  "model_name": "HOG + HistGradientBoosting",
+  "trained_on": "500 synthetic 512 px tiles (0.5 m/px), 50 m patches, exact YOLO labels",
+  "accuracy": 0.8044,
+  "macro_f1": 0.7467,
+  "n_train_patches": 10000,
+  "n_test_patches": 2500,
+  "n_train_tiles": 400,
+  "n_test_tiles": 100,
+  "n_features": 2099,
+  "n_boosting_iterations": 81,
+  "fit_seconds": 109.0,
+  "confusion_matrix": [
+    [
+      1166,
+      136,
+      103
+    ],
+    [
+      88,
+      212,
+      92
+    ],
+    [
+      36,
+      34,
+      633
+    ]
+  ],
+  "label_order": [
+    "safe",
+    "caution",
+    "unsafe"
+  ],
+  "per_class": {
+    "safe": {
+      "precision": 0.9039,
+      "recall": 0.8299,
+      "f1": 0.8653,
+      "support": 1405
+    },
+    "caution": {
+      "precision": 0.555,
+      "recall": 0.5408,
+      "f1": 0.5478,
+      "support": 392
+    },
+    "unsafe": {
+      "precision": 0.7645,
+      "recall": 0.9004,
+      "f1": 0.8269,
+      "support": 703
+    }
+  },
+  "thresholds": {
+    "label": "Lander",
+    "description": "Conservative: 1 m safe limit, 3 m+ boulders are lethal.",
+    "size": {
+      "safe_max_diameter_m": 1.0,
+      "caution_max_diameter_m": 3.0,
+      "unsafe_min_diameter_m": 3.0
+    },
+    "density": {
+      "safe_max_count": 3,
+      "caution_max_count": 10,
+      "unsafe_min_count": 11
+    }
+  },
+  "feature_version": 3,
+  "note": "PyTorch is blocked by Windows Smart App Control, so this is a trained classical-vision model, not YOLOv8n. The 2D/3D map still shows the classical boulder detector and its metric hazard grid."
+}
