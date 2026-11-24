@@ -62,6 +62,12 @@ python -m venv .venv
 
 On Linux/macOS use `source .venv/bin/activate` and `python ...` instead.
 
+**Open it on your phone:** the server binds to `0.0.0.0:8000`, so from a phone on
+the same Wi-Fi visit `http://<PC-LAN-IP>:8000/` (for example
+`http://192.168.1.102:8000/`). Find the PC's LAN IPv4 with `ipconfig` on Windows.
+If it does not load, allow inbound TCP port 8000 in Windows Firewall. Set `HOST`
+and `PORT` environment variables to change the bind address/port.
+
 `scripts/02_train.py` remains the real YOLOv8n training path, but it cannot run
 on this machine because Windows Smart App Control blocks PyTorch DLLs (see
 [PyTorch blocker](#pytorch-blocker-on-this-machine-important)). The demo does not

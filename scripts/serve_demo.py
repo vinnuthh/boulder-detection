@@ -2,15 +2,19 @@
 
 Run:
     python scripts/serve_demo.py
-    # open http://localhost:8000/
+    # open http://localhost:8000/ on this PC
+    # or http://<PC-LAN-IP>:8000/ from a phone on the same Wi-Fi
+    # HOST / PORT environment variables override the bind address and port.
 
-The API is intentionally small and local-only.  When the scikit-learn model
+The API is intentionally small.  When the scikit-learn model
 cannot be loaded (e.g. Windows Smart App Control blocks scipy DLLs), the
 server starts in classical-only mode: it still classifies 50 m cells from the
 bright-body / shadow detector alone so uploads remain functional.
 """
 from __future__ import annotations
 
+import os
+import socket
 import sys
 from pathlib import Path
 from typing import Any
@@ -284,7 +288,22 @@ if __name__ == "__main__":
         print("[serve] landing-safety model loaded")
     else:
         print("[serve] running in classical-only fallback mode")
-    print("[serve] http://localhost:8000/  (2D map)")
-    print("[serve] http://localhost:8000/upload.html  (image upload)")
-    print("[serve] http://localhost:8000/3d.html  (3D site model)")
-    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", "8000"))
+
+    # Best-effort LAN address so the phone URL is printed at startup.
+    lan_ip = "127.0.0.1"
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("8.8.8.8", 80))
+        lan_ip = probe.getsockname()[0]
+    except OSError:
+        pass
+    finally:
+        probe.close()
+
+    print(f"[serve] local: http://localhost:{port}/  (2D map)")
+    print(f"[serve] phone: http://{lan_ip}:{port}/  (same Wi-Fi)")
+    print(f"[serve] upload: http://{lan_ip}:{port}/upload.html")
+    print(f"[serve] 3D: http://{lan_ip}:{port}/3d.html")
+    uvicorn.run(app, host=host, port=port, log_level="info")
